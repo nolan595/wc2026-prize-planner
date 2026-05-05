@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>WC 2026 — F2P Prize Planner</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #0a1628; color: #fff; padding: 28px; max-width: 1200px; margin: 0 auto; }
+  h1 { color: #f5c518; font-size: 1.35rem; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 20px; }
+  .card { background: #112240; border: 1px solid #1e3a5f; border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+  .card-title { font-size: 0.68rem; font-weight: 700; color: #f5c518; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+  .config-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field label { display: block; font-size: 0.66rem; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+  select, input[type="number"] { width: 100%; background: #0d1d36; border: 1px solid #2a5080; color: #fff; border-radius: 6px; padding: 8px 10px; font-size: 0.86rem; outline: none; -moz-appearance: textfield; }
+  input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  select:focus, input[type="number"]:focus { border-color: #4a9eff; }
+
+  /* Month tabs */
+  .month-tab { background: #112240; border: 1px solid #1e3a5f; color: #7a9abf; padding: 6px 16px; border-radius: 16px; cursor: pointer; font-size: 0.76rem; font-weight: 600; letter-spacing: 0.3px; transition: all 0.15s; }
+  .month-tab:hover { border-color: #4a9eff; color: #aac4e8; }
+  .month-tab.active { background: #1a4a8a; border-color: #4a9eff; color: #fff; }
+
+  /* Calendar */
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cal-grid.all-mode .cal-cell { min-height: 120px; }
+  .cal-header { font-size: 0.62rem; font-weight: 700; color: #f5c518; text-align: center; padding: 5px 2px; background: #0d1d36; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .cal-cell { background: #0d1d36; border-radius: 6px; min-height: 80px; padding: 6px 7px; border: 1px solid #1a2f4a; position: relative; }
+  .cal-cell.empty { background: transparent; border-color: transparent; }
+  .cal-cell.no-fixture { opacity: 0.3; }
+  .cal-cell.no-fixture:hover { opacity: 0.7; cursor: pointer; }
+  .add-round-btn { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #1a3a6a; border: 1px dashed #2a5080; color: #4a9eff; font-size: 1.1rem; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; line-height: 26px; text-align: center; padding: 0; }
+  .cal-cell.no-fixture:hover .add-round-btn { display: block; }
+  .cal-cell.has-fixture { cursor: pointer; border-color: #2a4a70; transition: border-color 0.15s, opacity 0.15s; }
+  .cal-cell.has-fixture:hover { border-color: #4a9eff; }
+  .cal-cell.active-streak { border-left: 3px solid #ff5252; }
+  .cal-cell.active-ml     { border-left: 3px solid #4caf50; }
+  .cal-cell.active-pd     { border-left: 3px solid #4a9eff; }
+  .cal-cell.toggled-off   { opacity: 0.28; border-left-color: #2a4a70 !important; }
+  .cal-cell.editing       { border-color: #ff9800 !important; box-shadow: 0 0 0 1px #ff9800; }
+  .day-num { font-size: 0.72rem; font-weight: 700; color: #aac4e8; margin-bottom: 3px; }
+  .off-mark { color: #ff5252; font-size: 0.6rem; }
+  .override-dot { display: inline-block; width: 6px; height: 6px; background: #ff9800; border-radius: 50%; margin-left: 3px; vertical-align: middle; }
+  .match-name { font-size: 0.63rem; color: #7a9abf; line-height: 1.3; }
+  .match-time { font-size: 0.57rem; color: #4a6a8a; margin-top: 1px; }
+
+  /* Prize tags - icon + color per type */
+  .prize-tags { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 2px; }
+  .prize-tag-item { font-size: 0.58rem; font-weight: 600; padding: 1px 5px; border-radius: 3px; }
+  .prize-tag-item.coins     { background: rgba(245,197,24,0.18); color: #f5c518; }
+  .prize-tag-item.freebets  { background: rgba(74,158,255,0.18); color: #74aeff; }
+  .prize-tag-item.freespins { background: rgba(76,175,80,0.18);  color: #4caf50; }
+  .prize-tag-item.cash      { background: rgba(255,152,0,0.18);  color: #ff9800; }
+
+  /* Day action buttons */
+  .day-actions { display: none; position: absolute; top: 4px; right: 4px; gap: 2px; }
+  .cal-cell.has-fixture:hover .day-actions { display: flex; }
+  .day-btn { background: #1a3a6a; border: none; color: #7a9abf; font-size: 0.6rem; cursor: pointer; padding: 2px 5px; border-radius: 3px; line-height: 1.5; }
+  .day-btn:hover { color: #fff; background: #2a5080; }
+
+  /* Slot strips — All mode */
+  .slot-strip { padding: 3px 5px; margin-bottom: 3px; border-left: 2px solid; border-radius: 2px; display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
+  .slot-strip.sk { border-color: #ff5252; background: rgba(255,82,82,0.06); }
+  .slot-strip.ml { border-color: #4caf50; background: rgba(76,175,80,0.06); }
+  .slot-strip.pd { border-color: #4a9eff; background: rgba(74,158,255,0.06); }
+  .slot-info { flex: 1; min-width: 0; }
+  .slot-game-label { font-size: 0.46rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1px; }
+  .slot-strip.sk .slot-game-label { color: #ff5252; }
+  .slot-strip.ml .slot-game-label { color: #4caf50; }
+  .slot-strip.pd .slot-game-label { color: #4a9eff; }
+  .slot-match { font-size: 0.58rem; color: #7a9abf; line-height: 1.3; }
+  .slot-time  { font-size: 0.52rem; color: #4a6a8a; }
+  .swap-btn { background: none; border: none; color: #4a6a8a; font-size: 0.6rem; cursor: pointer; padding: 1px 3px; flex-shrink: 0; }
+  .swap-btn:hover { color: #fff; }
+
+  /* Override panel (inline below calendar) */
+  #overridePanel { display: none; margin-top: 10px; background: #0d1d36; border: 1px solid #ff9800; border-radius: 8px; padding: 14px; }
+  .op-header { font-size: 0.66rem; color: #ff9800; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .op-close { cursor: pointer; color: #4a7aaa; font-size: 0.8rem; }
+  .op-close:hover { color: #fff; }
+  .op-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+  .op-field label { display: block; font-size: 0.58rem; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; }
+  .op-field input { font-size: 0.8rem; padding: 5px 7px; }
+  .btn-sm { background: none; border: 1px solid #2a5080; color: #7a9abf; font-size: 0.66rem; padding: 4px 10px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+  .btn-sm:hover { color: #fff; border-color: #4a7aaa; }
+
+  /* Round badge */
+  .round-badge { background: #1a3a6a; color: #4a9eff; font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+  .cal-hint { font-size: 0.66rem; color: #4a7aaa; font-style: italic; margin-top: 10px; }
+
+  /* Prize table */
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 0.63rem; color: #f5c518; text-transform: uppercase; letter-spacing: 0.8px; padding: 0 8px 8px; text-align: left; border-bottom: 1px solid #1e3a5f; }
+  th.right { text-align: right; }
+  td { padding: 5px 8px; vertical-align: middle; }
+  tr:not(:last-child) td { border-bottom: 1px solid #0d1d36; }
+  td.tier-label { font-size: 0.82rem; font-weight: 700; color: #aac4e8; white-space: nowrap; width: 160px; }
+  td.tier-label.gold   { color: #f5c518; }
+  td.tier-label.silver { color: #b0bec5; }
+  td.tier-label.bronze { color: #cd7f32; }
+  td select { font-size: 0.76rem; padding: 5px 7px; }
+  td input[type="number"] { font-size: 0.84rem; padding: 6px 8px; text-align: right; }
+  td input[type="number"].calculated { color: #4caf50; border-color: #1e3a5f; background: #0a1628; }
+  td input[type="number"].entered    { color: #fff; border-color: #2a5080; }
+  td.num-input { width: 120px; }
+  .hint { font-size: 0.68rem; color: #4a7aaa; font-style: italic; margin-top: 10px; }
+  .all-notice { color: #7a9abf; font-size: 0.84rem; padding: 8px 0; }
+
+  /* Summary */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .summary-item { background: #0d1d36; border-radius: 8px; padding: 12px 14px; border-left: 3px solid #4a9eff; }
+  .s-label { font-size: 0.64rem; color: #7a9abf; text-transform: uppercase; letter-spacing: 0.5px; }
+  .s-total { font-size: 1.15rem; font-weight: 700; color: #fff; margin: 3px 0 2px; }
+  .s-sub   { font-size: 0.7rem; color: #7a9abf; }
+  .summary-item.coins     { border-left-color: #f5c518; }
+  .summary-item.freebets  { border-left-color: #4a9eff; }
+  .summary-item.freespins { border-left-color: #4caf50; }
+  .summary-item.cash      { border-left-color: #ff9800; }
+  .empty-summary { color: #4a7aaa; font-size: 0.82rem; }
+  #lbCard { display: none; }
+
+  /* Streak prize table */
+  tr.sk-level-header td { background: #0d1d36; color: #ff5252; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 8px 8px 4px; border-bottom: 1px solid #1a2f4a; }
+  td.seg-label { font-size: 0.76rem; color: #7a9abf; white-space: nowrap; width: 150px; }
+  .sk-level-badge { display: inline-block; background: rgba(255,82,82,0.12); border: 1px solid rgba(255,82,82,0.3); color: #ff5252; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 10px; margin-left: 6px; }
+  .prize-tag-item.sk-level { background: rgba(255,82,82,0.14); color: #ff7070; }
+
+  /* Swap modal */
+  #customEventModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 100; align-items: center; justify-content: center; }
+  #customEventModal.open { display: flex; }
+  #swapModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 100; align-items: center; justify-content: center; }
+  #swapModal.open { display: flex; }
+  .modal-box { background: #112240; border: 1px solid #2a5080; border-radius: 10px; padding: 22px; min-width: 340px; max-width: 440px; }
+  .modal-hd { font-size: 0.72rem; color: #f5c518; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .modal-sub { font-size: 0.68rem; color: #7a9abf; margin-bottom: 12px; }
+  .modal-close { cursor: pointer; color: #4a7aaa; font-weight: normal; font-size: 0.9rem; }
+  .modal-close:hover { color: #fff; }
+  .modal-box select { margin-bottom: 12px; }
+  .btn-apply { background: #1a3a6a; border: 1px solid #4a9eff; color: #4a9eff; font-size: 0.78rem; padding: 6px 16px; border-radius: 6px; cursor: pointer; margin-right: 8px; }
+  .btn-apply:hover { background: #4a9eff; color: #000; }
+  .btn-reset-swap { background: none; border: 1px solid #2a5080; color: #7a9abf; font-size: 0.78rem; padding: 6px 16px; border-radius: 6px; cursor: pointer; }
+  .btn-reset-swap:hover { color: #fff; border-color: #4a7aaa; }
+</style>
+</head>
+<body>
+
+<h1>⚽ WC 2026 — F2P Prize Planner</h1>
+
+<div class="card" style="margin-bottom:14px">
+  <div class="card-title">Game Guide</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+
+    <div style="border-left:3px solid #ff5252;background:#0d1d36;border-radius:6px;padding:12px 14px">
+      <div style="font-size:0.65rem;font-weight:700;color:#ff5252;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">🌅 Streak — Early AM</div>
+      <div style="font-size:0.78rem;color:#aac4e8;line-height:1.55">Overnight fixture — players wake up to a new result and a new question waiting for them. No live action required; drives daily habit and morning engagement.</div>
+    </div>
+
+    <div style="border-left:3px solid #4caf50;background:#0d1d36;border-radius:6px;padding:12px 14px">
+      <div style="font-size:0.65rem;font-weight:700;color:#4caf50;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">📺 Match Line — Afternoon</div>
+      <div style="font-size:0.78rem;color:#aac4e8;line-height:1.55">In-play game tied to an afternoon or early evening fixture. Strong in-play features keep players active during the match and complement live betting.</div>
+    </div>
+
+    <div style="border-left:3px solid #4a9eff;background:#0d1d36;border-radius:6px;padding:12px 14px">
+      <div style="font-size:0.65rem;font-weight:700;color:#4a9eff;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">🔮 Predictor — Hype Fixture</div>
+      <div style="font-size:0.78rem;color:#aac4e8;line-height:1.55">Rapid rounds or big-event fixtures. Can run standalone as a session opener, or extend engagement after Match Line — keeping players in the app into the evening.</div>
+    </div>
+
+  </div>
+  <div style="font-size:0.62rem;color:#4a6a8a;margin-top:10px;font-style:italic">Select a market and game above to configure prizes. Use the calendar to toggle rounds on/off or override prizes for individual days.</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Configuration</div>
+  <div class="config-row">
+    <div class="field">
+      <label>Market</label>
+      <select id="market" onchange="onMarketChange()">
+        <option value="romania">🇷🇴 Romania</option>
+        <option value="poland">🇵🇱 Poland</option>
+        <option value="brazil">🇧🇷 Brazil</option>
+        <option value="belgium">🇧🇪 Belgium</option>
+        <option value="greece">🇬🇷 Greece</option>
+        <option value="serbia">🇷🇸 Serbia</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Game</label>
+      <select id="game" onchange="onGameChange()">
+        <option value="All">⚽ All Games</option>
+        <option value="Predictor">Predictor</option>
+        <option value="Streak">Streak</option>
+        <option value="Match Line">Match Line</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">
+    WC 2026 — Schedule
+    <span class="round-badge" id="roundBadge">—</span>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <button class="month-tab active" id="tabJun" onclick="setMonth('jun')">June — Group Stage</button>
+    <button class="month-tab" id="tabJul" onclick="setMonth('jul')">July — Knockouts</button>
+  </div>
+  <div class="cal-grid" id="calendar"></div>
+  <div id="overridePanel">
+    <div class="op-header">
+      <span id="opTitle">Override prizes</span>
+      <span class="op-close" onclick="closeOverride()">✕</span>
+    </div>
+    <div class="op-grid" id="opGrid"></div>
+    <button class="btn-sm" onclick="clearOverride()">Clear Override</button>
+  </div>
+  <div class="cal-hint" id="calHint">Click a fixture to include / exclude it. Use ✏️ to override prizes for that round, 🔄 to reassign a match.</div>
+</div>
+
+<div class="card" id="prizeCard">
+  <div class="card-title">Prize Breakdown</div>
+  <div id="allNotice" class="all-notice" style="display:none">Select a specific game above to configure prizes.</div>
+  <table id="prizeTable" style="display:table">
+    <thead><tr>
+      <th>Tier</th><th>Prize Type</th>
+      <th class="right">Per Round</th><th class="right">Total (all rounds)</th>
+    </tr></thead>
+    <tbody id="tierTable"></tbody>
+  </table>
+  <div class="hint" id="prizeHint">Type in either column — the other updates automatically.</div>
+  <div id="streakPrizeTable" style="display:none">
+    <table>
+      <thead><tr>
+        <th>Segment</th><th>Prize Type</th>
+        <th class="right">Per Player / Round</th><th class="right">× Active Rounds</th>
+      </tr></thead>
+      <tbody id="streakPrizeBody"></tbody>
+    </table>
+    <div class="hint">Prize is awarded per qualifying player per round. "× Active Rounds" = per-player total across all active days.</div>
+  </div>
+</div>
+
+<div class="card" id="lbCard">
+  <div class="card-title">Leaderboard</div>
+  <table>
+    <thead><tr>
+      <th>Tier</th><th>Prize Type</th>
+      <th class="right">Prize per Leaderboard</th>
+      <th class="right">No. of Leaderboards</th>
+      <th class="right">Total Cost</th>
+    </tr></thead>
+    <tbody id="lbTable"></tbody>
+  </table>
+  <div class="hint">Enter prize per leaderboard and number of leaderboards — total calculates automatically.</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Summary</div>
+  <div class="summary-grid" id="summary">
+    <div class="empty-summary">Enter prize amounts above to see totals.</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Share / Collaborate</div>
+  <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+    <div style="flex:1;min-width:220px;">
+      <div style="font-size:0.66rem;color:#7a9abf;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Export your config</div>
+      <button class="btn-apply" style="width:100%;margin:0" onclick="exportConfig()">📋 Copy config to clipboard</button>
+      <div id="exportMsg" style="font-size:0.66rem;color:#4caf50;margin-top:5px;min-height:16px"></div>
+    </div>
+    <div style="flex:2;min-width:260px;">
+      <div style="font-size:0.66rem;color:#7a9abf;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Import a config</div>
+      <div style="display:flex;gap:6px;">
+        <input id="importInput" type="text" placeholder="Paste config code here…" style="flex:1;background:#0d1d36;border:1px solid #2a5080;color:#fff;border-radius:6px;padding:7px 10px;font-size:0.82rem;outline:none;" />
+        <button class="btn-apply" style="margin:0;white-space:nowrap" onclick="importConfig()">Load</button>
+      </div>
+      <div id="importMsg" style="font-size:0.66rem;margin-top:5px;min-height:16px"></div>
+    </div>
+  </div>
+  <div style="font-size:0.64rem;color:#4a6a8a;margin-top:10px;font-style:italic">Config includes all markets, prize amounts, calendar toggles, and event overrides. Paste in Google Chat, email, or Docs to share with colleagues.</div>
+</div>
+
+<!-- Custom event modal (July blank days) -->
+<div id="customEventModal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <span id="customEventTitle">Add Custom Event</span>
+      <span class="modal-close" onclick="closeCustomModal()">✕</span>
+    </div>
+    <div class="modal-sub" id="customEventSub"></div>
+    <div class="op-field" style="margin-bottom:10px">
+      <label style="font-size:0.62rem;color:#7a9abf;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:4px">Event name</label>
+      <input id="customEventName" type="text" placeholder="e.g. Copa América Final" style="width:100%;background:#0d1d36;border:1px solid #2a5080;color:#fff;border-radius:6px;padding:8px 10px;font-size:0.86rem;outline:none;" />
+    </div>
+    <div class="op-field" style="margin-bottom:12px">
+      <label style="font-size:0.62rem;color:#7a9abf;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:4px">Time (local, e.g. 8:00 PM)</label>
+      <input id="customEventTime" type="text" placeholder="8:00 PM" style="width:100%;background:#0d1d36;border:1px solid #2a5080;color:#fff;border-radius:6px;padding:8px 10px;font-size:0.86rem;outline:none;" />
+    </div>
+    <div>
+      <button class="btn-apply" onclick="applyCustomEvent()">Add</button>
+      <button class="btn-reset-swap" onclick="closeCustomModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Event swap modal -->
+<div id="swapModal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <span id="swapTitle">Assign Match</span>
+      <span class="modal-close" onclick="closeSwapModal()">✕</span>
+    </div>
+    <div class="modal-sub" id="swapSub"></div>
+    <select id="swapSelect"></select>
+    <div>
+      <button class="btn-apply" onclick="applySwap()">Apply</button>
+      <button class="btn-reset-swap" onclick="resetSwap()">Reset to Default</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE_IST = {
+  11: { ml: ['Mexico v South Africa',        '8:00 PM'] },
+  12: { sk: ['South Korea v Czechia',         '2:00 AM'], ml: ['Canada v Bosnia & Herzegovina', '8:00 PM'] },
+  13: { sk: ['USA v Paraguay',                '2:00 AM'], ml: ['Qatar v Switzerland',            '8:00 PM'], pd: ['Brazil v Morocco',        '11:00 PM'] },
+  14: { sk: ['Haiti v Scotland',              '2:00 AM'], ml: ['Germany v Curacao',              '6:00 PM'] },
+  15: { sk: ['Sweden v Tunisia',              '3:00 AM'], ml: ['Spain v Cape Verde',             '5:00 PM'], pd: ['Belgium v Egypt',          '8:00 PM'] },
+  16: { sk: ['Iran v New Zealand',            '2:00 AM'], ml: ['France v Senegal',               '8:00 PM'] },
+  17: { sk: ['Argentina v Algeria',           '2:00 AM'], ml: ['Portugal v DR Congo',            '6:00 PM'], pd: ['England v Croatia',        '9:00 PM'] },
+  18: { sk: ['Ghana v Panama',               '12:00 AM'], ml: ['Czechia v South Africa',         '5:00 PM'] },
+  19: { sk: ['Mexico v South Korea',          '2:00 AM'], ml: ['USA v Australia',                '8:00 PM'] },
+  20: { sk: ['Brazil v Haiti',               '1:30 AM'],  ml: ['Netherlands v Sweden',           '6:00 PM'], pd: ['Germany v Ivory Coast',   '9:00 PM'] },
+  21: { sk: ['Ecuador v Curacao',             '1:00 AM'], ml: ['Spain v Saudi Arabia',           '5:00 PM'], pd: ['Belgium v Iran',           '8:00 PM'] },
+  22: { sk: ['New Zealand v Egypt',           '2:00 AM'], ml: ['Argentina v Austria',            '6:00 PM'], pd: ['France v Iraq',           '10:00 PM'] },
+  23: { sk: ['Norway v Senegal',              '1:00 AM'], ml: ['Portugal v Uzbekistan',          '6:00 PM'], pd: ['England v Ghana',          '9:00 PM'] },
+  24: { sk: ['Panama v Croatia',             '12:00 AM'], ml: ['Switzerland v Canada',           '8:00 PM'], pd: ['Scotland v Brazil',       '11:00 PM'] },
+  25: { sk: ['Czechia v Mexico',              '2:00 AM'], ml: ['Ecuador v Germany',              '9:00 PM'] },
+  26: { sk: ['Tunisia v Netherlands',        '12:00 AM'], ml: ['Norway v France',                '8:00 PM'] },
+  27: { sk: ['Uruguay v Spain',               '1:00 AM'], ml: ['Croatia v Ghana',               '10:00 PM'] },
+  28: { sk: ['Colombia v Portugal',          '12:30 AM'] },
+  // ── Round of 32 — Jun 29–Jul 2 ──────────────────────────
+  29: { sk: ['R32 — Match A', '2:00 AM'], ml: ['R32 — Match B', '8:00 PM'], pd: ['R32 — Match C', '9:30 PM'] },
+  30: { sk: ['R32 — Match D', '2:00 AM'], ml: ['R32 — Match E', '8:00 PM'], pd: ['R32 — Match F', '9:30 PM'] },
+  31: { sk: ['R32 — Match G', '2:00 AM'], ml: ['R32 — Match H', '8:00 PM'], pd: ['R32 — Match I', '9:30 PM'] },
+  32: { sk: ['R32 — Match J', '2:00 AM'], ml: ['R32 — Match K', '8:00 PM'], pd: ['R32 — Match L', '9:30 PM'] },
+  // ── Round of 16 — Jul 4–7 ───────────────────────────────
+  34: { ml: ['R16 — Match M', '8:00 PM'], pd: ['R16 — Match N', '10:00 PM'] },
+  35: { ml: ['R16 — Match O', '8:00 PM'], pd: ['R16 — Match P', '10:00 PM'] },
+  36: { ml: ['R16 — Match Q', '8:00 PM'], pd: ['R16 — Match R', '10:00 PM'] },
+  37: { ml: ['R16 — Match S', '8:00 PM'], pd: ['R16 — Match T', '10:00 PM'] },
+  // ── Quarter-Finals — Jul 9–10 ───────────────────────────
+  39: { ml: ['QF — Match U',  '8:00 PM'], pd: ['QF — Match V',  '10:00 PM'] },
+  40: { ml: ['QF — Match W',  '8:00 PM'], pd: ['QF — Match X',  '10:00 PM'] },
+  // ── Semi-Finals — Jul 13–14 ─────────────────────────────
+  43: { pd: ['Semi-Final 1',  '1:00 AM'] },
+  44: { pd: ['Semi-Final 2',  '1:00 AM'] },
+  // ── Bronze Final & Final — Jul 18–19 ────────────────────
+  48: { pd: ['Bronze Final',  '9:00 PM'] },
+  49: { pd: ['The Final',     '8:00 PM'] },
+};
+
+// Full WC 2026 group stage pool — all matches by IST calendar day
+// Source: FIFA FWC26 Match Schedule v17, times converted ET→IST
+const WC_ALL_MATCHES = {
+  11: [['USA v Paraguay', '10:30 AM'], ['Germany v Curacao', '10:30 PM'], ['Korea Republic v Czechia', '11:30 AM'], ['Mexico v South Africa', '2:30 PM'], ['Australia v Turkiye', '9:30 AM']],
+  12: [['Sweden v Tunisia', '7:30 AM'], ['Spain v Cabo Verde', '9:30 PM']],
+  13: [['Belgium v Egypt', '12:30 AM'], ['Saudi Arabia v Uruguay', '3:30 AM'], ['Iran v New Zealand', '6:30 AM'], ['Austria v Jordan', '9:30 AM']],
+  14: [['Portugal v DR Congo', '10:30 PM'], ['France v Senegal', '12:30 AM'], ['Iraq v Norway', '3:30 AM'], ['Argentina v Algeria', '6:30 AM']],
+  15: [['Ghana v Panama', '4:30 AM'], ['Uzbekistan v Colombia', '7:30 AM'], ['Czechia v South Africa', '9:30 PM']],
+  16: [['Switzerland v Bosnia & Herzegovina', '12:30 AM'], ['Canada v Qatar', '3:30 AM'], ['Mexico v Korea Republic', '6:30 AM']],
+  17: [['Netherlands v Sweden', '10:30 PM'], ['USA v Australia', '12:30 AM'], ['Scotland v Morocco', '3:30 AM'], ['Brazil v Haiti', '6:00 AM'], ['Turkiye v Paraguay', '8:30 AM'], ['Tunisia v Japan', '9:30 AM']],
+  18: [['Germany v Ivory Coast', '1:30 AM'], ['Ecuador v Curacao', '5:30 AM'], ['Spain v Saudi Arabia', '9:30 PM']],
+  19: [['Argentina v Austria', '10:30 PM'], ['Belgium v Iran', '12:30 AM'], ['Uruguay v Cabo Verde', '3:30 AM'], ['New Zealand v Egypt', '6:30 AM']],
+  20: [['Portugal v Uzbekistan', '10:30 PM'], ['Norway v Senegal', '5:30 AM'], ['Jordan v Algeria', '8:30 AM']],
+  21: [['England v Ghana', '1:30 AM'], ['Panama v Croatia', '4:30 AM'], ['Colombia v DR Congo', '7:30 AM']],
+  22: [['Switzerland v Canada', '12:30 AM'], ['Bosnia & Herzegovina v Qatar', '12:30 AM'], ['Scotland v Brazil', '3:30 AM'], ['Morocco v Haiti', '3:30 AM'], ['Czechia v Mexico', '6:30 AM'], ['South Africa v Korea Republic', '6:30 AM']],
+  23: [['Curacao v Ivory Coast', '1:30 AM'], ['Ecuador v Germany', '1:30 AM'], ['Japan v Sweden', '4:30 AM'], ['Tunisia v Netherlands', '4:30 AM'], ['Turkiye v USA', '7:30 AM']],
+  24: [['Norway v France', '12:30 AM'], ['Senegal v Iraq', '12:30 AM'], ['Cabo Verde v Saudi Arabia', '5:30 AM'], ['Uruguay v Spain', '5:30 AM'], ['Egypt v Iran', '8:30 AM'], ['New Zealand v Belgium', '8:30 AM']],
+  25: [['Panama v England', '2:30 AM'], ['Croatia v Ghana', '2:30 AM'], ['Colombia v Portugal', '5:00 AM'], ['DR Congo v Uzbekistan', '5:00 AM'], ['Algeria v Austria', '7:30 AM'], ['Jordan v Argentina', '7:30 AM']],
+  // Knockout rounds — generic until fixtures known; use 🔄 to reassign once teams qualify
+  29: [['R32 — Match A', '2:00 AM'], ['R32 — Match B', '8:00 PM'], ['R32 — Match C', '9:30 PM']],
+  30: [['R32 — Match D', '2:00 AM'], ['R32 — Match E', '8:00 PM'], ['R32 — Match F', '9:30 PM']],
+  31: [['R32 — Match G', '2:00 AM'], ['R32 — Match H', '8:00 PM'], ['R32 — Match I', '9:30 PM']],
+  32: [['R32 — Match J', '2:00 AM'], ['R32 — Match K', '8:00 PM'], ['R32 — Match L', '9:30 PM']],
+  34: [['R16 — Match M', '8:00 PM'], ['R16 — Match N', '10:00 PM']],
+  35: [['R16 — Match O', '8:00 PM'], ['R16 — Match P', '10:00 PM']],
+  36: [['R16 — Match Q', '8:00 PM'], ['R16 — Match R', '10:00 PM']],
+  37: [['R16 — Match S', '8:00 PM'], ['R16 — Match T', '10:00 PM']],
+  39: [['QF — Match U', '8:00 PM'], ['QF — Match V', '10:00 PM']],
+  40: [['QF — Match W', '8:00 PM'], ['QF — Match X', '10:00 PM']],
+  43: [['Semi-Final 1', '1:00 AM']],
+  44: [['Semi-Final 2', '1:00 AM']],
+  48: [['Bronze Final', '9:00 PM']],
+  49: [['The Final', '8:00 PM']],
+};
+
+// Streak prize config per market — segments and which question levels are prized
+const STREAK_CONFIG = {
+  romania: {
+    segments: ['VIP', 'HV', 'MV / NC', 'LV / VLV', 'NV'],
+    levels: [4, 7],
+  },
+  poland: {
+    segments: ['VIP / HV', 'MV / LV', 'VLV / NV'],
+    levels: [4, 7],
+  },
+  belgium: {
+    segments: ['All customers'],
+    levels: [4, 6],
+  },
+  brazil: {
+    segments: ['HV / VIP', 'MV', 'LV / NC', 'NB / NV / VLV'],
+    levels: [5],
+  },
+  greece: {
+    segments: ['VIP', 'High Value', 'Medium Value', 'Low / VLV / NV'],
+    levels: [2, 4, 7, 9, 10],
+  },
+  serbia: {
+    segments: ['VIP / HV', 'MV / LV', 'NV'],
+    levels: [4, 7],
+  },
+};
+
+// streakPrizeState: { market: { level: { segment: { type, perRound, total, lastEdited } } } }
+let streakPrizeState = {};
+
+function getStreakState(market) {
+  if (!streakPrizeState[market]) streakPrizeState[market] = {};
+  const cfg = STREAK_CONFIG[market];
+  cfg.levels.forEach(lv => {
+    if (!streakPrizeState[market][lv]) streakPrizeState[market][lv] = {};
+    cfg.segments.forEach(seg => {
+      if (!streakPrizeState[market][lv][seg])
+        streakPrizeState[market][lv][seg] = { type: 'Coins', perRound: '', total: '', lastEdited: null };
+    });
+  });
+  return streakPrizeState[market];
+}
+
+const COUNTRIES = {
+  romania: { offset: 2,  predictorOverrides: { 13: ['France v Senegal','8:00 PM'] }, homeMatches: new Set() },
+  poland:  { offset: 1,  predictorOverrides: {}, homeMatches: new Set(['Germany v Curacao','Germany v Ivory Coast']) },
+  belgium: { offset: 1,  predictorOverrides: {}, homeMatches: new Set(['Belgium v Egypt','Belgium v Iran']) },
+  greece:  { offset: 2,  predictorOverrides: {
+    13: ['France v Senegal','8:00 PM'], 17: ['France v Iraq','10:00 PM'],
+    20: ['Spain v Saudi Arabia','5:00 PM'], 21: ['Argentina v Austria','6:00 PM'],
+    22: ['Spain v Cape Verde','5:00 PM'], 23: ['Germany v Curacao','6:00 PM'],
+  }, homeMatches: new Set() },
+  brazil:  { offset: -4, overrides: {
+    17: { pd: ['France v Senegal','8:00 PM'] },
+    20: { sk: ['Türkiye v Paraguay','4:00 AM'], ml: ['Netherlands v Sweden','6:00 PM'], pd: ['Brazil v Haiti','1:30 AM'] },
+    21: { pd: ['Argentina v Austria','6:00 PM'] },
+    22: { pd: ['Uruguay v Spain','1:00 AM'] },
+    23: { pd: ['Colombia v Portugal','12:30 AM'] },
+  }, homeMatches: new Set(['Brazil v Morocco','Brazil v Haiti','Scotland v Brazil']) },
+  serbia:  { offset: 1,  predictorOverrides: { 15: ['France v Senegal','8:00 PM'], 21: ['Argentina v Austria','6:00 PM'] },
+    homeMatches: new Set(['Argentina v Algeria','Argentina v Austria','France v Iraq']) },
+};
+
+const GAME_SLOT  = { 'Streak': 'sk', 'Match Line': 'ml', 'Predictor': 'pd' };
+const SLOT_CLASS = { sk: 'active-streak', ml: 'active-ml', pd: 'active-pd' };
+const SLOT_NAME  = { sk: 'Streak', ml: 'Match Line', pd: 'Predictor' };
+const TIERS = {
+  'Predictor':  ['3/6 correct', '4/6 correct', '5/6 correct', '6/6 correct'],
+  'Streak':     ['2/10', '4/10', '6/10', '7/10', '9/10', '10/10 Jackpot'],
+  'Match Line': ['3/6 correct', '4/6 correct', '5/6 correct', '6/6 correct', 'Full Sheet'],
+};
+const LB_TIERS   = ['🥇 Gold', '🥈 Silver', '🥉 Bronze'];
+const LB_CLASSES = { '🥇 Gold': 'gold', '🥈 Silver': 'silver', '🥉 Bronze': 'bronze' };
+const PRIZE_TYPES = ['Coins', 'Free Bets', 'Free Spins', 'Cash'];
+const PRIZE_ICON  = { 'Coins': '🪙', 'Free Bets': '🎟', 'Free Spins': '🎰', 'Cash': '💵' };
+const PRIZE_CSS   = { 'Coins': 'coins', 'Free Bets': 'freebets', 'Free Spins': 'freespins', 'Cash': 'cash' };
+const COLOR_MAP   = { 'Coins': 'coins', 'Free Bets': 'freebets', 'Free Spins': 'freespins', 'Cash': 'cash' };
+
+let activeMonth   = 'jun';
+let toggledOff    = new Set();
+let roundOverrides = {};   // { game: { day: { tier: value } } }
+let eventOverrides = {};   // { 'day-slot': [match, time] }
+let editingDay     = null;
+let swapDay = null, swapSlot = null;
+let stateByGame = {};  // { 'Predictor': {tier: {...}}, 'Streak': {...}, 'Match Line': {...} }
+let lbState = {};
+
+// Proxy helpers so the rest of the code can still use `state` scoped to current game
+function getState() {
+  const game = document.getElementById('game').value;
+  if (!stateByGame[game]) stateByGame[game] = {};
+  return stateByGame[game];
+}
+// Alias used throughout — always refers to current game's state
+Object.defineProperty(window, 'state', { get: getState, set(v) { stateByGame[document.getElementById('game').value] = v; } });
+
+// ── Utilities ──────────────────────────────────────────────
+
+function toLocal(timeStr, offset) {
+  const m = timeStr.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+  if (!m) return timeStr;
+  let h = parseInt(m[1]), min = parseInt(m[2]), ap = m[3].toUpperCase();
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  let total = h * 60 + min + offset * 60;
+  let nd = false;
+  if (total >= 1440) { total -= 1440; nd = true; }
+  if (total < 0) total += 1440;
+  const nh = Math.floor(total / 60), nm = total % 60;
+  const nap = nh >= 12 ? 'PM' : 'AM';
+  const nh12 = nh % 12 === 0 ? 12 : nh % 12;
+  return `${nh12}:${String(nm).padStart(2,'0')} ${nap}${nd ? ' +1' : ''}`;
+}
+
+function getSlotData(day, marketKey, slotType) {
+  const ovKey = day + '-' + slotType;
+  if (eventOverrides[ovKey]) return eventOverrides[ovKey];
+  const country = COUNTRIES[marketKey];
+  const baseDay = BASE_IST[day];
+  if (!baseDay) return null;
+  const ov = (country.overrides || {})[day] || {};
+  if (slotType === 'pd') {
+    if (ov.pd !== undefined) return ov.pd;
+    if (country.predictorOverrides && country.predictorOverrides[day]) return country.predictorOverrides[day];
+    return baseDay.pd || null;
+  }
+  if (ov[slotType] !== undefined) return ov[slotType];
+  return baseDay[slotType] || null;
+}
+
+function getMatchPool(day, marketKey) {
+  const seen = new Set(), pool = [];
+  const add = d => { if (d && !seen.has(d[0])) { seen.add(d[0]); pool.push(d); } };
+  // First add all known WC matches for this day (full pool)
+  (WC_ALL_MATCHES[day] || []).forEach(add);
+  // Also add base slot entries in case any are missing from the pool
+  const base = BASE_IST[day] || {};
+  ['sk','ml','pd'].forEach(sl => add(base[sl]));
+  const country = COUNTRIES[marketKey];
+  const ov = (country.overrides || {})[day] || {};
+  ['sk','ml','pd'].forEach(sl => { if (ov[sl]) add(ov[sl]); });
+  if (country.predictorOverrides && country.predictorOverrides[day]) add(country.predictorOverrides[day]);
+  return pool;
+}
+
+function dayLabel(d) {
+  return d <= 30 ? `Jun ${d}` : `Jul ${d - 30}`;
+}
+
+function setMonth(m) {
+  activeMonth = m;
+  document.getElementById('tabJun').classList.toggle('active', m === 'jun');
+  document.getElementById('tabJul').classList.toggle('active', m === 'jul');
+  if (editingDay !== null) closeOverride();
+  renderCalendar();
+}
+
+// Day range for each month tab
+// Jun: d 8–30 (grid starts Mon Jun 8, first fixture Jun 11, last group stage Jun 28/30)
+// Jul: d 31–49 (Jul 1–19, grid starts Mon Jun 29 = d29 to align week)
+function monthRange() {
+  if (activeMonth === 'jun') return { gridStart: 8,  firstShown: 11, last: 30 };
+  else                        return { gridStart: 29, firstShown: 29, last: 49 };
+}
+
+function getActiveRounds(slot) {
+  const mk = document.getElementById('market').value;
+  let n = 0;
+  for (let d = 11; d <= 49; d++) {
+    if (!toggledOff.has(d) && getSlotData(d, mk, slot)) n++;
+  }
+  return n;
+}
+
+function getRounds() {
+  const game = document.getElementById('game').value;
+  if (game === 'All') return 1;
+  return Math.max(1, getActiveRounds(GAME_SLOT[game]));
+}
+
+// ── Prize tag data ─────────────────────────────────────────
+
+function getPrizeTagData(day) {
+  const game = document.getElementById('game').value;
+  if (game === 'All') return [];
+  if (game === 'Streak') {
+    const mk = document.getElementById('market').value;
+    const cfg = STREAK_CONFIG[mk];
+    const ss = streakPrizeState[mk] || {};
+    // Show a badge for each prized level that has any amount entered
+    const activeLevels = cfg.levels.filter(lv => {
+      const lvState = ss[lv] || {};
+      return cfg.segments.some(seg => parseFloat((lvState[seg] || {}).perRound) > 0);
+    });
+    return activeLevels.map(lv => ({ type: 'sk-level', label: `Q${lv}` }));
+  }
+  const byType = {};
+  (TIERS[game] || []).forEach(tier => {
+    const s = state[tier];
+    if (!s) return;
+    const ov = roundOverrides[game] && roundOverrides[game][day];
+    const ovEntry = ov && ov[tier];
+    const val = ovEntry !== undefined ? ovEntry.val : (parseFloat(s.perRound) || 0);
+    const type = ovEntry !== undefined ? ovEntry.type : s.type;
+    if (!val) return;
+    byType[type] = (byType[type] || 0) + val;
+  });
+  return Object.entries(byType).map(([type, val]) => ({ type, val: Math.round(val) }));
+}
+
+// ── Calendar ───────────────────────────────────────────────
+
+function renderCalendar() {
+  const game  = document.getElementById('game').value;
+  const mk    = document.getElementById('market').value;
+  const isAll = game === 'All';
+  const slot  = isAll ? null : GAME_SLOT[game];
+  const offset = COUNTRIES[mk].offset;
+
+  const cal = document.getElementById('calendar');
+  cal.innerHTML = '';
+  cal.className = 'cal-grid' + (isAll ? ' all-mode' : '');
+
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-header'; h.textContent = d; cal.appendChild(h);
+  });
+
+  const { gridStart, firstShown, last } = monthRange();
+  for (let d = gridStart; d <= last; d++) {
+    const cell = document.createElement('div');
+    if (d < firstShown) {
+      cell.className = 'cal-cell empty';
+    } else if (isAll) {
+      // All Games mode — show all slot strips
+      const slots = ['sk','ml','pd'].map(sl => ({ sl, data: getSlotData(d, mk, sl) })).filter(x => x.data);
+      if (!slots.length) { cell.className = 'cal-cell no-fixture'; }
+      else {
+        cell.className = 'cal-cell has-fixture';
+        const numEl = document.createElement('div');
+        numEl.className = 'day-num'; numEl.textContent = dayLabel(d);
+        cell.appendChild(numEl);
+        slots.forEach(({ sl, data }) => {
+          const [match, istTime] = data;
+          const strip = document.createElement('div');
+          strip.className = 'slot-strip ' + sl;
+          const info = document.createElement('div'); info.className = 'slot-info';
+          const lbl = document.createElement('div'); lbl.className = 'slot-game-label'; lbl.textContent = SLOT_NAME[sl];
+          const mn  = document.createElement('div'); mn.className = 'slot-match'; mn.textContent = match;
+          const mt  = document.createElement('div'); mt.className = 'slot-time';  mt.textContent = toLocal(istTime, offset);
+          info.appendChild(lbl); info.appendChild(mn); info.appendChild(mt);
+          const swapBtnEl = document.createElement('button');
+          swapBtnEl.className = 'swap-btn'; swapBtnEl.textContent = '🔄'; swapBtnEl.title = 'Reassign match';
+          swapBtnEl.addEventListener('click', e => { e.stopPropagation(); openSwapModal(d, sl); });
+          strip.appendChild(info); strip.appendChild(swapBtnEl);
+          cell.appendChild(strip);
+        });
+        // No toggle in All mode
+        cell.style.cursor = 'default';
+      }
+    } else {
+      // Single game mode
+      const slotData  = getSlotData(d, mk, slot);
+      const hasFixture = !!slotData;
+      const isOff     = toggledOff.has(d);
+      const hasOv     = !!(roundOverrides[game] && roundOverrides[game][d]) && Object.keys(roundOverrides[game][d]).length;
+
+      let cls = 'cal-cell';
+      if (!hasFixture) cls += ' no-fixture';
+      else {
+        cls += ' has-fixture';
+        if (!isOff) cls += ' ' + SLOT_CLASS[slot];
+        if (isOff)  cls += ' toggled-off';
+        if (editingDay === d) cls += ' editing';
+      }
+      cell.className = cls;
+
+      const numEl = document.createElement('div'); numEl.className = 'day-num';
+      numEl.innerHTML = `${dayLabel(d)}${isOff && hasFixture ? ' <span class="off-mark">✕</span>' : ''}${hasOv && !isOff ? '<span class="override-dot"></span>' : ''}`;
+      cell.appendChild(numEl);
+
+      if (!hasFixture) {
+        const addBtn = document.createElement('button');
+        addBtn.className = 'add-round-btn'; addBtn.textContent = '+';
+        if (activeMonth === 'jul') {
+          addBtn.title = 'Add a custom event on this day';
+          addBtn.addEventListener('click', e => { e.stopPropagation(); openCustomModal(d, slot); });
+        } else {
+          addBtn.title = 'Add a round on this day';
+          addBtn.addEventListener('click', e => { e.stopPropagation(); openSwapModal(d, slot); });
+        }
+        cell.appendChild(addBtn);
+      }
+
+      if (slotData) {
+        const [match, istTime] = slotData;
+        const isHome = COUNTRIES[mk].homeMatches && COUNTRIES[mk].homeMatches.has(match);
+        const mn = document.createElement('div'); mn.className = 'match-name'; mn.textContent = match + (isHome ? ' ★' : '');
+        const mt = document.createElement('div'); mt.className = 'match-time'; mt.textContent = toLocal(istTime, offset);
+        cell.appendChild(mn); cell.appendChild(mt);
+
+        // Prize tags
+        if (!isOff) {
+          const tagData = getPrizeTagData(d);
+          if (tagData.length) {
+            const tagsEl = document.createElement('div'); tagsEl.className = 'prize-tags';
+            tagData.forEach(({ type, val, label }) => {
+              const tag = document.createElement('span');
+              if (type === 'sk-level') {
+                tag.className = 'prize-tag-item sk-level';
+                tag.textContent = label;
+              } else {
+                tag.className = 'prize-tag-item ' + (PRIZE_CSS[type] || '');
+                tag.textContent = `${PRIZE_ICON[type] || ''} ${val.toLocaleString()}`;
+              }
+              tagsEl.appendChild(tag);
+            });
+            cell.appendChild(tagsEl);
+          }
+        }
+
+        // Action buttons (shown on hover via CSS)
+        const acts = document.createElement('div'); acts.className = 'day-actions';
+        if (!isOff) {
+          const editBtn = document.createElement('button');
+          editBtn.className = 'day-btn'; editBtn.textContent = '✏️'; editBtn.title = 'Override prizes for this round';
+          editBtn.addEventListener('click', e => { e.stopPropagation(); openOverride(d); });
+          acts.appendChild(editBtn);
+        }
+        const swapBtnEl = document.createElement('button');
+        const isCustom = activeMonth === 'jul' && !!(eventOverrides[d + '-' + slot]) && !(WC_ALL_MATCHES[d] || []).length;
+        swapBtnEl.className = 'day-btn'; swapBtnEl.textContent = '🔄';
+        swapBtnEl.title = isCustom ? 'Edit custom event' : 'Reassign match';
+        swapBtnEl.addEventListener('click', e => {
+          e.stopPropagation();
+          if (isCustom) openCustomModal(d, slot);
+          else openSwapModal(d, slot);
+        });
+        acts.appendChild(swapBtnEl);
+        cell.appendChild(acts);
+
+        cell.addEventListener('click', () => {
+          if (toggledOff.has(d)) toggledOff.delete(d); else toggledOff.add(d);
+          if (editingDay === d) closeOverride();
+          onRoundsChange();
+        });
+      }
+    }
+    cal.appendChild(cell);
+  }
+
+  // Pad last row
+  const rem = (last - gridStart + 1) % 7;
+  if (rem) for (let i = 0; i < 7 - rem; i++) {
+    const p = document.createElement('div'); p.className = 'cal-cell empty'; cal.appendChild(p);
+  }
+
+  // Round badge
+  if (isAll) {
+    const sk = getActiveRounds('sk'), ml = getActiveRounds('ml'), pd = getActiveRounds('pd');
+    document.getElementById('roundBadge').textContent = `${sk} Streak · ${ml} ML · ${pd} Pred`;
+    document.getElementById('calHint').textContent = 'Use 🔄 to reassign a match to a different game slot.';
+  } else {
+    const r = getActiveRounds(slot);
+    document.getElementById('roundBadge').textContent = `${r} round${r !== 1 ? 's' : ''}`;
+    document.getElementById('calHint').textContent = 'Click a fixture to include / exclude it. Use ✏️ to override prizes for that round, 🔄 to reassign a match.';
+  }
+}
+
+// ── Per-round override panel ───────────────────────────────
+
+function openOverride(day) {
+  const game = document.getElementById('game').value;
+  if (game === 'All') return;
+  const mk = document.getElementById('market').value;
+  const slotData = getSlotData(day, mk, GAME_SLOT[game]);
+  const match = slotData ? slotData[0] : '';
+  editingDay = day;
+  document.getElementById('opTitle').textContent = `Prize Override — ${dayLabel(day)}${match ? ': ' + match : ''}`;
+
+  const grid = document.getElementById('opGrid');
+  grid.innerHTML = '';
+  TIERS[game].forEach(tier => {
+    const s = state[tier];
+    const existing = (roundOverrides[game] && roundOverrides[game][day] || {})[tier];
+    // existing is { val, type } or undefined
+
+    const div = document.createElement('div'); div.className = 'op-field';
+    const lbl = document.createElement('label'); lbl.textContent = tier;
+
+    // Prize type selector
+    const sel = document.createElement('select');
+    sel.style.cssText = 'margin-bottom:4px;font-size:0.76rem;padding:4px 6px;';
+    PRIZE_TYPES.forEach(p => {
+      const o = document.createElement('option'); o.value = p;
+      o.textContent = PRIZE_ICON[p] + ' ' + p;
+      if (p === (existing ? existing.type : s.type)) o.selected = true;
+      sel.appendChild(o);
+    });
+
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.min = '0'; inp.className = 'entered';
+    inp.placeholder = s && s.perRound ? s.perRound : '0';
+    inp.value = existing !== undefined ? String(existing.val) : '';
+
+    function saveOverride() {
+      if (!roundOverrides[game]) roundOverrides[game] = {};
+      if (!roundOverrides[game][day]) roundOverrides[game][day] = {};
+      if (inp.value === '') {
+        delete roundOverrides[game][day][tier];
+      } else {
+        roundOverrides[game][day][tier] = { val: parseFloat(inp.value) || 0, type: sel.value };
+      }
+      if (!Object.keys(roundOverrides[game][day]).length) delete roundOverrides[game][day];
+      renderCalendar();
+    }
+
+    sel.addEventListener('change', saveOverride);
+    inp.addEventListener('input', saveOverride);
+
+    div.appendChild(lbl); div.appendChild(sel); div.appendChild(inp);
+    grid.appendChild(div);
+  });
+
+  document.getElementById('overridePanel').style.display = 'block';
+  renderCalendar();
+}
+
+function closeOverride() {
+  editingDay = null;
+  document.getElementById('overridePanel').style.display = 'none';
+  renderCalendar();
+}
+
+function clearOverride() {
+  if (editingDay !== null) {
+    const game = document.getElementById('game').value;
+    if (roundOverrides[game]) delete roundOverrides[game][editingDay];
+    document.getElementById('opGrid').querySelectorAll('input').forEach(inp => { inp.value = ''; });
+    renderCalendar();
+  }
+}
+
+// ── Event swap modal ───────────────────────────────────────
+
+function openSwapModal(day, slot) {
+  swapDay = day; swapSlot = slot;
+  const mk = document.getElementById('market').value;
+  const pool = getMatchPool(day, mk);
+  const current = getSlotData(day, mk, slot);
+  const isNew = !current;
+  document.getElementById('swapTitle').textContent = isNew ? `Add Round — ${dayLabel(day)} (${SLOT_NAME[slot]})` : `Assign Match — ${dayLabel(day)} (${SLOT_NAME[slot]})`;
+  document.getElementById('swapSub').textContent  = isNew ? 'Pick a match to create a round on this day.' : `Current: ${current[0]}`;
+  const sel = document.getElementById('swapSelect');
+  sel.innerHTML = '';
+  if (!pool.length) {
+    const o = document.createElement('option'); o.textContent = 'No matches available for this day'; sel.appendChild(o);
+  } else {
+    pool.forEach(([match, time]) => {
+      const o = document.createElement('option');
+      o.value = match + '|' + time; o.textContent = `${match} (${time} IST)`;
+      if (current && current[0] === match) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+  document.getElementById('swapModal').classList.add('open');
+}
+
+function closeSwapModal() {
+  document.getElementById('swapModal').classList.remove('open');
+  swapDay = null; swapSlot = null;
+}
+
+function applySwap() {
+  if (swapDay === null) return;
+  const val = document.getElementById('swapSelect').value;
+  if (!val) return;
+  const [match, time] = val.split('|');
+  eventOverrides[swapDay + '-' + swapSlot] = [match, time];
+  closeSwapModal();
+  onRoundsChange();
+}
+
+function resetSwap() {
+  if (swapDay !== null) {
+    delete eventOverrides[swapDay + '-' + swapSlot];
+    closeSwapModal();
+    onRoundsChange();
+  }
+}
+
+// Close modal on backdrop click
+document.getElementById('swapModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeSwapModal(); });
+document.getElementById('customEventModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeCustomModal(); });
+
+// ── Custom event modal (July blank days) ───────────────────
+
+let customDay = null, customSlot = null;
+
+function openCustomModal(day, slot) {
+  customDay = day; customSlot = slot;
+  document.getElementById('customEventTitle').textContent = `Add Event — ${dayLabel(day)}`;
+  document.getElementById('customEventSub').textContent = `Game slot: ${SLOT_NAME[slot]}`;
+  const existing = eventOverrides[day + '-' + slot];
+  document.getElementById('customEventName').value = existing ? existing[0] : '';
+  document.getElementById('customEventTime').value = existing ? existing[1] : '';
+  document.getElementById('customEventModal').classList.add('open');
+  setTimeout(() => document.getElementById('customEventName').focus(), 50);
+}
+
+function closeCustomModal() {
+  document.getElementById('customEventModal').classList.remove('open');
+  customDay = null; customSlot = null;
+}
+
+function applyCustomEvent() {
+  const name = document.getElementById('customEventName').value.trim();
+  if (!name) { document.getElementById('customEventName').focus(); return; }
+  const time = document.getElementById('customEventTime').value.trim() || '8:00 PM';
+  eventOverrides[customDay + '-' + customSlot] = [name, time];
+  closeCustomModal();
+  onRoundsChange();
+}
+
+// ── Prize table ────────────────────────────────────────────
+
+function updateTiers() {
+  const game = document.getElementById('game').value;
+  const mk = document.getElementById('market').value;
+  if (game !== 'All' && game !== 'Streak') {
+    const s = getState();
+    TIERS[game].forEach(t => { if (!s[t]) s[t] = { type: 'Coins', perRound: '', total: '', lastEdited: null }; });
+  }
+  if (game === 'Streak') getStreakState(mk);
+  LB_TIERS.forEach(t => { if (!lbState[t]) lbState[t] = { type: 'Coins', prizePerLb: '', numLbs: '' }; });
+  renderTable(); renderLbTable(); renderSummary();
+}
+
+function renderTable() {
+  const game = document.getElementById('game').value;
+  const isAll = game === 'All';
+  const isStreak = game === 'Streak';
+  document.getElementById('prizeTable').style.display = (isAll || isStreak) ? 'none' : 'table';
+  document.getElementById('allNotice').style.display  = isAll ? 'block' : 'none';
+  document.getElementById('prizeHint').style.display  = (isAll || isStreak) ? 'none' : 'block';
+  document.getElementById('streakPrizeTable').style.display = isStreak ? 'block' : 'none';
+  if (isAll) return;
+  if (isStreak) { renderStreakTable(); return; }
+
+  const tbody = document.getElementById('tierTable');
+  tbody.innerHTML = '';
+  TIERS[game].forEach(tier => {
+    const s = state[tier];
+    const tr = document.createElement('tr');
+    const tdL = document.createElement('td'); tdL.className = 'tier-label'; tdL.textContent = tier;
+    const tdT = document.createElement('td');
+    const sel = document.createElement('select');
+    PRIZE_TYPES.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = `${PRIZE_ICON[p]} ${p}`; if (p === s.type) o.selected = true; sel.appendChild(o); });
+    sel.addEventListener('change', () => { state[tier].type = sel.value; onPrizeChange(); });
+    tdT.appendChild(sel);
+
+    const tdPR = document.createElement('td');
+    const inpPR = document.createElement('input');
+    inpPR.type = 'number'; inpPR.min = '0'; inpPR.placeholder = '0'; inpPR.value = s.perRound;
+    inpPR.className = s.lastEdited === 'total' ? 'calculated' : 'entered';
+    inpPR.addEventListener('focus', () => { inpPR.className = 'entered'; });
+    inpPR.addEventListener('input', () => {
+      state[tier].perRound = inpPR.value; state[tier].lastEdited = 'perRound';
+      state[tier].total = inpPR.value === '' ? '' : String(Math.round(parseFloat(inpPR.value) * getRounds()));
+      inpTotal.value = state[tier].total; inpTotal.className = 'calculated'; onPrizeChange();
+    });
+    tdPR.appendChild(inpPR);
+
+    const tdTot = document.createElement('td');
+    const inpTotal = document.createElement('input');
+    inpTotal.type = 'number'; inpTotal.min = '0'; inpTotal.placeholder = '0'; inpTotal.value = s.total;
+    inpTotal.className = s.lastEdited === 'perRound' ? 'calculated' : 'entered';
+    inpTotal.addEventListener('focus', () => { inpTotal.className = 'entered'; });
+    inpTotal.addEventListener('input', () => {
+      state[tier].total = inpTotal.value; state[tier].lastEdited = 'total';
+      state[tier].perRound = inpTotal.value === '' ? '' : String(Math.round(parseFloat(inpTotal.value) / getRounds()));
+      inpPR.value = state[tier].perRound; inpPR.className = 'calculated'; onPrizeChange();
+    });
+    tdTot.appendChild(inpTotal);
+
+    tr.appendChild(tdL); tr.appendChild(tdT); tr.appendChild(tdPR); tr.appendChild(tdTot);
+    tbody.appendChild(tr);
+  });
+}
+
+function renderStreakTable() {
+  const mk = document.getElementById('market').value;
+  const cfg = STREAK_CONFIG[mk];
+  const ss = getStreakState(mk);
+  const rounds = getRounds();
+  const container = document.getElementById('streakPrizeBody');
+  container.innerHTML = '';
+
+  cfg.levels.forEach(lv => {
+    // Level sub-header row
+    const hdr = document.createElement('tr'); hdr.className = 'sk-level-header';
+    const hdrTd = document.createElement('td'); hdrTd.colSpan = 4;
+    hdrTd.innerHTML = `Prize Level <span class="sk-level-badge">Q${lv}</span>`;
+    hdr.appendChild(hdrTd); container.appendChild(hdr);
+
+    cfg.segments.forEach(seg => {
+      const s = ss[lv][seg];
+      const tr = document.createElement('tr');
+      const tdL = document.createElement('td'); tdL.className = 'seg-label'; tdL.textContent = seg;
+      const tdT = document.createElement('td');
+      const sel = document.createElement('select');
+      PRIZE_TYPES.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = `${PRIZE_ICON[p]} ${p}`; if (p === s.type) o.selected = true; sel.appendChild(o); });
+      sel.addEventListener('change', () => { ss[lv][seg].type = sel.value; onPrizeChange(); });
+      tdT.appendChild(sel);
+
+      const tdPR = document.createElement('td');
+      const inpPR = document.createElement('input');
+      inpPR.type = 'number'; inpPR.min = '0'; inpPR.placeholder = '0'; inpPR.value = s.perRound;
+      inpPR.className = s.lastEdited === 'total' ? 'calculated' : 'entered';
+      inpPR.addEventListener('focus', () => { inpPR.className = 'entered'; });
+      inpPR.addEventListener('input', () => {
+        ss[lv][seg].perRound = inpPR.value; ss[lv][seg].lastEdited = 'perRound';
+        ss[lv][seg].total = inpPR.value === '' ? '' : String(Math.round(parseFloat(inpPR.value) * rounds));
+        inpTot.value = ss[lv][seg].total; inpTot.className = 'calculated'; onPrizeChange();
+      });
+      tdPR.appendChild(inpPR);
+
+      const tdTot = document.createElement('td');
+      const inpTot = document.createElement('input');
+      inpTot.type = 'number'; inpTot.min = '0'; inpTot.placeholder = '0'; inpTot.value = s.total;
+      inpTot.className = s.lastEdited === 'perRound' ? 'calculated' : 'entered';
+      inpTot.addEventListener('focus', () => { inpTot.className = 'entered'; });
+      inpTot.addEventListener('input', () => {
+        ss[lv][seg].total = inpTot.value; ss[lv][seg].lastEdited = 'total';
+        ss[lv][seg].perRound = inpTot.value === '' ? '' : String(Math.round(parseFloat(inpTot.value) / rounds));
+        inpPR.value = ss[lv][seg].perRound; inpPR.className = 'calculated'; onPrizeChange();
+      });
+      tdTot.appendChild(inpTot);
+
+      tr.appendChild(tdL); tr.appendChild(tdT); tr.appendChild(tdPR); tr.appendChild(tdTot);
+      container.appendChild(tr);
+    });
+  });
+}
+
+function renderLbTable() {
+  const tbody = document.getElementById('lbTable');
+  tbody.innerHTML = '';
+  LB_TIERS.forEach(tier => {
+    const s = lbState[tier];
+    const tr = document.createElement('tr');
+    const tdL = document.createElement('td'); tdL.className = 'tier-label ' + (LB_CLASSES[tier] || ''); tdL.textContent = tier;
+    const tdT = document.createElement('td');
+    const sel = document.createElement('select');
+    PRIZE_TYPES.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = `${PRIZE_ICON[p]} ${p}`; if (p === s.type) o.selected = true; sel.appendChild(o); });
+    sel.addEventListener('change', () => { lbState[tier].type = sel.value; renderSummary(); });
+    tdT.appendChild(sel);
+
+    const tdPPL = document.createElement('td'); tdPPL.className = 'num-input';
+    const inpPPL = document.createElement('input');
+    inpPPL.type = 'number'; inpPPL.min = '0'; inpPPL.placeholder = '0'; inpPPL.value = s.prizePerLb; inpPPL.className = 'entered';
+    inpPPL.addEventListener('input', () => {
+      lbState[tier].prizePerLb = inpPPL.value;
+      const v = (parseFloat(inpPPL.value) || 0) * (parseFloat(lbState[tier].numLbs) || 0);
+      inpTot.value = v ? String(Math.round(v)) : ''; inpTot.className = 'calculated'; renderSummary();
+    });
+    tdPPL.appendChild(inpPPL);
+
+    const tdNL = document.createElement('td'); tdNL.className = 'num-input';
+    const inpNL = document.createElement('input');
+    inpNL.type = 'number'; inpNL.min = '0'; inpNL.placeholder = '0'; inpNL.value = s.numLbs; inpNL.className = 'entered';
+    inpNL.addEventListener('input', () => {
+      lbState[tier].numLbs = inpNL.value;
+      const v = (parseFloat(lbState[tier].prizePerLb) || 0) * (parseFloat(inpNL.value) || 0);
+      inpTot.value = v ? String(Math.round(v)) : ''; inpTot.className = 'calculated'; renderSummary();
+    });
+    tdNL.appendChild(inpNL);
+
+    const tdTot = document.createElement('td'); tdTot.className = 'num-input';
+    const inpTot = document.createElement('input');
+    inpTot.type = 'number'; inpTot.readOnly = true; inpTot.placeholder = '—'; inpTot.className = 'calculated';
+    const v = (parseFloat(s.prizePerLb) || 0) * (parseFloat(s.numLbs) || 0);
+    inpTot.value = v ? String(Math.round(v)) : '';
+    tdTot.appendChild(inpTot);
+
+    tr.appendChild(tdL); tr.appendChild(tdT); tr.appendChild(tdPPL); tr.appendChild(tdNL); tr.appendChild(tdTot);
+    tbody.appendChild(tr);
+  });
+}
+
+function recalcAll() {
+  const rounds = getRounds();
+  const game = document.getElementById('game').value;
+  if (game === 'All') return;
+  if (game === 'Streak') {
+    const mk = document.getElementById('market').value;
+    const cfg = STREAK_CONFIG[mk];
+    const ss = getStreakState(mk);
+    cfg.levels.forEach(lv => {
+      cfg.segments.forEach(seg => {
+        const s = ss[lv][seg];
+        if (s.lastEdited === 'perRound' && s.perRound !== '') s.total = String(Math.round(parseFloat(s.perRound) * rounds));
+        else if (s.lastEdited === 'total' && s.total !== '') s.perRound = String(Math.round(parseFloat(s.total) / rounds));
+      });
+    });
+  } else {
+    TIERS[game].forEach(tier => {
+      const s = state[tier];
+      if (s.lastEdited === 'perRound' && s.perRound !== '') s.total = String(Math.round(parseFloat(s.perRound) * rounds));
+      else if (s.lastEdited === 'total' && s.total !== '') s.perRound = String(Math.round(parseFloat(s.total) / rounds));
+    });
+  }
+  renderTable(); renderSummary();
+}
+
+function renderSummary() {
+  const game = document.getElementById('game').value;
+  if (game === 'All') { document.getElementById('summary').innerHTML = '<div class="empty-summary">Select a specific game to see prize totals.</div>'; return; }
+  const mk   = document.getElementById('market').value;
+  const slot = GAME_SLOT[game];
+
+  // Collect all active days for this game/market
+  const activeDays = [];
+  for (let d = 11; d <= 49; d++) {
+    if (!toggledOff.has(d) && getSlotData(d, mk, slot)) activeDays.push(d);
+  }
+
+  const totals = {}, subs = {};
+
+  if (game === 'Streak') {
+    const cfg = STREAK_CONFIG[mk];
+    const ss = streakPrizeState[mk] || {};
+    cfg.levels.forEach(lv => {
+      cfg.segments.forEach(seg => {
+        const s = (ss[lv] || {})[seg] || {};
+        const val = parseFloat(s.perRound) || 0;
+        if (!val) return;
+        const type = s.type || 'Coins';
+        if (!totals[type]) { totals[type] = 0; subs[type] = { instant: 0, lb: 0 }; }
+        const contribution = val * activeDays.length;
+        totals[type] += contribution; subs[type].instant += contribution;
+      });
+    });
+    LB_TIERS.forEach(tier => {
+      const s = lbState[tier];
+      const v = (parseFloat(s.prizePerLb) || 0) * (parseFloat(s.numLbs) || 0);
+      if (!v) return;
+      const t = s.type;
+      if (!totals[t]) { totals[t] = 0; subs[t] = { instant: 0, lb: 0 }; }
+      totals[t] += v; subs[t].lb += v;
+    });
+  } else {
+    TIERS[game].forEach(tier => {
+      const s = state[tier];
+      const defaultVal = parseFloat(s.perRound) || 0;
+      const gameOvs = roundOverrides[game] || {};
+      const hasAnyOverride = activeDays.some(d => gameOvs[d] && gameOvs[d][tier] !== undefined);
+      if (!defaultVal && !hasAnyOverride) return;
+      activeDays.forEach(d => {
+        const ovEntry = gameOvs[d] && gameOvs[d][tier];
+        const val  = ovEntry !== undefined ? ovEntry.val  : defaultVal;
+        const type = ovEntry !== undefined ? ovEntry.type : s.type;
+        if (!val) return;
+        if (!totals[type]) { totals[type] = 0; subs[type] = { instant: 0, lb: 0 }; }
+        totals[type] += val; subs[type].instant += val;
+      });
+    });
+  }
+
+  const el = document.getElementById('summary');
+  if (!Object.keys(totals).length) { el.innerHTML = '<div class="empty-summary">Enter prize amounts above to see totals.</div>'; return; }
+  let html = Object.entries(totals).map(([type, total]) => {
+    const s = subs[type];
+    const sub = (game === 'Streak' && (s.instant > 0 || s.lb > 0))
+      ? `<div class="s-sub">Instant: ${Math.round(s.instant).toLocaleString()} · LB: ${Math.round(s.lb).toLocaleString()}</div>` : '';
+    return `<div class="summary-item ${COLOR_MAP[type] || 'freebets'}">
+      <div class="s-label">${PRIZE_ICON[type] || ''} ${type}</div>
+      <div class="s-total">${Math.round(total).toLocaleString()}</div>${sub}</div>`;
+  }).join('');
+  if (game === 'Streak') html += `<div class="summary-item" style="border-left-color:#4a6a8a;grid-column:1/-1"><div class="s-label">ℹ Instant prizes</div><div class="s-sub" style="font-size:0.75rem;color:#7a9abf;margin-top:4px">Amounts above are per prized player per round × active days. Total budget scales with player volume.</div></div>`;
+  el.innerHTML = html;
+}
+
+// ── Export / Import ────────────────────────────────────────
+
+function exportConfig() {
+  const payload = {
+    v: 1,
+    market: document.getElementById('market').value,
+    game:   document.getElementById('game').value,
+    toggledOff:    [...toggledOff],
+    roundOverrides,
+    eventOverrides,
+    stateByGame,
+    streakPrizeState,
+    lbState,
+  };
+  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  navigator.clipboard.writeText(encoded).then(() => {
+    const msg = document.getElementById('exportMsg');
+    msg.textContent = '✓ Copied to clipboard';
+    setTimeout(() => { msg.textContent = ''; }, 3000);
+  }).catch(() => {
+    // Fallback — show in a prompt so they can copy manually
+    prompt('Copy this config code:', encoded);
+  });
+}
+
+function importConfig() {
+  const raw = document.getElementById('importInput').value.trim();
+  const msg = document.getElementById('importMsg');
+  if (!raw) { msg.style.color = '#ff5252'; msg.textContent = 'Paste a config code first.'; return; }
+  try {
+    const payload = JSON.parse(decodeURIComponent(escape(atob(raw))));
+    if (!payload.v) throw new Error('invalid');
+
+    // Apply market + game selectors
+    document.getElementById('market').value = payload.market || 'romania';
+    document.getElementById('game').value   = payload.game   || 'All';
+
+    // Restore state
+    toggledOff       = new Set(payload.toggledOff || []);
+    roundOverrides   = payload.roundOverrides   || {};
+    eventOverrides   = payload.eventOverrides   || {};
+    stateByGame      = payload.stateByGame      || {};
+    streakPrizeState = payload.streakPrizeState || {};
+    lbState          = payload.lbState          || {};
+
+    // Reset month tab to jun
+    activeMonth = 'jun';
+    document.getElementById('tabJun').classList.add('active');
+    document.getElementById('tabJul').classList.remove('active');
+
+    document.getElementById('lbCard').style.display = payload.game === 'Streak' ? 'block' : 'none';
+    updateTiers();
+    renderCalendar();
+
+    msg.style.color = '#4caf50';
+    msg.textContent = '✓ Config loaded successfully';
+    document.getElementById('importInput').value = '';
+    setTimeout(() => { msg.textContent = ''; }, 3000);
+  } catch(e) {
+    msg.style.color = '#ff5252';
+    msg.textContent = '✗ Invalid config code — check you copied it in full.';
+  }
+}
+
+// ── Event handlers ─────────────────────────────────────────
+
+function onMarketChange() {
+  // Full reset when market changes — new market = new plan
+  activeMonth = 'jun';
+  document.getElementById('tabJun').classList.add('active');
+  document.getElementById('tabJul').classList.remove('active');
+  toggledOff.clear(); roundOverrides = {}; eventOverrides = {}; stateByGame = {}; streakPrizeState = {};
+  closeOverride();
+  const game = document.getElementById('game').value;
+  document.getElementById('lbCard').style.display = game === 'Streak' ? 'block' : 'none';
+  updateTiers();
+  renderCalendar();
+}
+
+function onGameChange() {
+  // Only reset calendar toggles + overrides for the new game; preserve other games' prize state
+  toggledOff.clear();
+  closeOverride();
+  const game = document.getElementById('game').value;
+  document.getElementById('lbCard').style.display = game === 'Streak' ? 'block' : 'none';
+  updateTiers();
+  renderCalendar();
+}
+
+function onConfigChange() { onMarketChange(); }
+
+function onRoundsChange() { recalcAll(); renderCalendar(); }
+function onPrizeChange()  { renderSummary(); renderCalendar(); }
+
+onConfigChange();
+</script>
+</body>
+</html>

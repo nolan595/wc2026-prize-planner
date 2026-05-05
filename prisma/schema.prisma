@@ -1,0 +1,21 @@
+// WC 2026 F2P Prize Planner — database schema
+// One row per market. The full planner state is stored as a JSON blob in `payload`.
+// No sub-tables needed — the state object is the unit of read/write (auto-save).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Plan {
+  id         Int      @id @default(autoincrement())
+  market     String   @unique
+  payload    Json
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("plans")
+}

@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+
+# Production build
+build/
+dist/
+
+# Environment files — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Prisma
+prisma/migrations/*.db
+
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# OS / editor
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+coverage/
+.nyc_output/

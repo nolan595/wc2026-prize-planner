@@ -1,0 +1,143 @@
+'use client';
+
+import type { ReactElement } from 'react';
+import type { Market, PrizeTagData, Game, RoundOverrides, EventOverrides, StateByGame, StreakPrizeState } from '@/lib/types';
+import { GAME_SLOT, SLOT_CLASS } from '@/lib/constants';
+import { getSlotData, getPrizeTagData } from '@/lib/utils';
+import { DayCell } from './DayCell';
+
+interface Props {
+  game: Game;
+  market: Market;
+  activeMonth: 'jun' | 'jul';
+  toggledOff: Set<number>;
+  editingDay: number | null;
+  roundOverrides: RoundOverrides;
+  eventOverrides: EventOverrides;
+  stateByGame: StateByGame;
+  streakPrizeState: StreakPrizeState;
+  onToggle: (day: number) => void;
+  onEdit: (day: number) => void;
+  onSwap: (day: number, slot: string) => void;
+  onAddRound: (day: number, slot: string) => void;
+}
+
+// Day range for each month tab
+// Jun: grid starts Mon Jun 8 (day 8), first fixture Jun 11 (day 11), last Jun 30 (day 30)
+// Jul: grid starts with Jun 29 (day 29) to align week, last Jul 19 (day 49)
+function monthRange(activeMonth: 'jun' | 'jul') {
+  if (activeMonth === 'jun') return { gridStart: 8, firstShown: 11, last: 30 };
+  return { gridStart: 29, firstShown: 29, last: 49 };
+}
+
+export function CalendarGrid({
+  game,
+  market,
+  activeMonth,
+  toggledOff,
+  editingDay,
+  roundOverrides,
+  eventOverrides,
+  stateByGame,
+  streakPrizeState,
+  onToggle,
+  onEdit,
+  onSwap,
+  onAddRound,
+}: Props) {
+  const isAll = game === 'All';
+  const slot = isAll ? null : GAME_SLOT[game as keyof typeof GAME_SLOT];
+  const { gridStart, firstShown, last } = monthRange(activeMonth);
+
+  const days: ReactElement[] = [];
+
+  for (let d = gridStart; d <= last; d++) {
+    if (d < firstShown) {
+      days.push(
+        <div key={`empty-${d}`} className="cal-cell empty" aria-hidden="true" />
+      );
+      continue;
+    }
+
+    if (isAll) {
+      const slots = (['sk', 'ml', 'pd'] as const)
+        .map(sl => ({ sl, data: getSlotData(d, market, sl, eventOverrides) }))
+        .filter(x => x.data !== null) as { sl: 'sk' | 'ml' | 'pd'; data: [string, string] }[];
+
+      days.push(
+        <DayCell
+          key={d}
+          day={d}
+          game={game}
+          market={market}
+          isAll={true}
+          slots={slots.map(x => ({ slot: x.sl, data: x.data }))}
+          isOff={false}
+          isEditing={false}
+          hasOverride={false}
+          prizeTags={[]}
+          activeMonth={activeMonth}
+          eventOverrides={eventOverrides}
+          onToggle={onToggle}
+          onEdit={onEdit}
+          onSwap={onSwap}
+          onAddRound={onAddRound}
+        />
+      );
+    } else {
+      const slotData = slot ? getSlotData(d, market, slot, eventOverrides) : null;
+      const isOff = toggledOff.has(d);
+      const hasOverride = !!(
+        roundOverrides[game]?.[String(d)] &&
+        Object.keys(roundOverrides[game][String(d)]).length > 0
+      );
+      const prizeTags = getPrizeTagData(d, game, market, stateByGame, streakPrizeState, roundOverrides) as PrizeTagData[];
+
+      days.push(
+        <DayCell
+          key={d}
+          day={d}
+          game={game}
+          market={market}
+          slotData={slotData}
+          slotClass={slot ? SLOT_CLASS[slot] : undefined}
+          isAll={false}
+          isOff={isOff}
+          isEditing={editingDay === d}
+          hasOverride={hasOverride}
+          prizeTags={prizeTags}
+          activeMonth={activeMonth}
+          eventOverrides={eventOverrides}
+          onToggle={onToggle}
+          onEdit={onEdit}
+          onSwap={onSwap}
+          onAddRound={onAddRound}
+        />
+      );
+    }
+  }
+
+  // Pad last row to complete 7-column grid
+  const totalCells = last - gridStart + 1;
+  const rem = totalCells % 7;
+  if (rem) {
+    for (let i = 0; i < 7 - rem; i++) {
+      days.push(
+        <div key={`pad-${i}`} className="cal-cell empty" aria-hidden="true" />
+      );
+    }
+  }
+
+  return (
+    <div
+      className={`cal-grid${isAll ? ' all-mode' : ''}`}
+      role="grid"
+      aria-label="WC 2026 fixture calendar"
+    >
+      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+        <div key={d} className="cal-header" role="columnheader">{d}</div>
+      ))}
+      {days}
+    </div>
+  );
+}
