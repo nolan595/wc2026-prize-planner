@@ -11,7 +11,35 @@
 You also need access to:
 - The GitHub repo (`nolan595` account)
 - Railway account (Postgres database)
-- Netlify account (`nolan595`, site name `world-cup-calendar`)
+- Netlify account (`nolan595`, site name `wc2026-prize-planner`)
+
+---
+
+## Live deployment
+
+| | |
+|---|---|
+| **Live URL** | https://wc2026-prize-planner.netlify.app |
+| **GitHub repo** | https://github.com/nolan595/wc2026-prize-planner |
+| **Netlify site name** | wc2026-prize-planner |
+| **Netlify account** | nolan595 |
+| **Auto-deploy** | Enabled — every push to `main` triggers a new deploy |
+
+## Deploying updates
+
+Push to `main` and Netlify will automatically build and deploy:
+
+```bash
+git add .
+git commit -m "your message"
+git push
+```
+
+Or trigger a manual deploy:
+
+```bash
+npx netlify-cli deploy --build --prod
+```
 
 ---
 
