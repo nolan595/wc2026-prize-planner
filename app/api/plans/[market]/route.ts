@@ -4,6 +4,8 @@
 // No auth — shared internal workspace. Rate limiting is not implemented here
 // because this is behind an internal network; add middleware if exposed externally.
 
+export const dynamic = 'force-dynamic';
+
 import { type NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { ok, err } from "@/lib/api-response";

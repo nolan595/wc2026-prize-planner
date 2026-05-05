@@ -107,7 +107,7 @@ export default function PlannerPage() {
     initialLoadDoneRef.current = false;
     setLoading(true);
 
-    fetch(`/api/plans/${market}`)
+    fetch(`/api/plans/${market}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(res => {
         const payload = res?.data?.payload;
@@ -355,6 +355,24 @@ export default function PlannerPage() {
 
   return (
     <main style={{ maxWidth: 1280, margin: '0 auto', padding: '40px 24px 40px' }}>
+
+      {/* ── Internal warning banner ── */}
+      <div style={{
+        background: 'rgba(255, 82, 82, 0.08)',
+        border: '1px solid rgba(255, 82, 82, 0.3)',
+        borderRadius: 6,
+        padding: '8px 16px',
+        marginBottom: 'var(--space-4)',
+        textAlign: 'center',
+        fontFamily: 'var(--font-display)',
+        fontSize: '0.7rem',
+        fontWeight: 700,
+        letterSpacing: '0.1em',
+        color: '#ff7070',
+        textTransform: 'uppercase',
+      }}>
+        ⚠ Do Not Share This Externally
+      </div>
 
       {/* ── Page header ── */}
       <header style={{
