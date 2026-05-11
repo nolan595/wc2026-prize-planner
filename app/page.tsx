@@ -570,7 +570,7 @@ export default function PlannerPage() {
           letterSpacing: '0.05em',
           margin: 0,
         }}>
-          WC 2026 — F2P Prize Planner
+          Hunch F2P World Cup Calendar
         </h1>
         <SaveStatusIndicator status={saveStatus} onRetry={retry} />
       </header>
@@ -634,7 +634,7 @@ export default function PlannerPage() {
       {/* ── Calendar ── */}
       <div className="card">
         <div className="card-title">
-          WC 2026 — Schedule
+          World Cup — Schedule
           <span className="round-badge">{roundBadgeText}</span>
         </div>
 

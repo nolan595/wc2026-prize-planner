@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'WC 2026 — F2P Prize Planner',
-  description: 'Internal prize budget planning tool for WC 2026 F2P games',
+  title: 'Hunch F2P World Cup Calendar',
+  description: 'Hunch F2P World Cup Calendar',
 };
 
 export default function RootLayout({
