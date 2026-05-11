@@ -8,7 +8,7 @@ import { dayLabel, getSlotData } from '@/lib/utils';
 
 interface Props {
   editingDay: number;
-  game: Exclude<Game, 'All'>;
+  game: Exclude<Game, 'All' | 'Pass the Ball'>;
   market: Market;
   stateByGame: StateByGame;
   roundOverrides: RoundOverrides;

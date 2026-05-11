@@ -159,7 +159,7 @@ export const COUNTRIES: Record<Market, {
   },
 };
 
-export const GAME_SLOT: Record<Exclude<Game, 'All'>, Slot> = {
+export const GAME_SLOT: Record<Exclude<Game, 'All' | 'Pass the Ball'>, Slot> = {
   'Streak': 'sk',
   'Match Line': 'ml',
   'Predictor': 'pd',
@@ -177,7 +177,7 @@ export const SLOT_NAME: Record<Slot, string> = {
   pd: 'Predictor',
 };
 
-export const TIERS: Record<Exclude<Game, 'All'>, string[]> = {
+export const TIERS: Record<Exclude<Game, 'All' | 'Pass the Ball'>, string[]> = {
   'Predictor':  ['3/6 correct', '4/6 correct', '5/6 correct', '6/6 correct'],
   'Streak':     ['2/10', '4/10', '6/10', '7/10', '9/10', '10/10 Jackpot'],
   'Match Line': ['3/6 correct', '4/6 correct', '5/6 correct', '6/6 correct', 'Full Sheet'],
@@ -216,9 +216,10 @@ export const MARKET_OPTIONS: { value: Market; label: string }[] = [
   { value: 'serbia',  label: '🇷🇸 Serbia' },
 ];
 
-export const GAME_OPTIONS: { value: Game; label: string }[] = [
-  { value: 'All',        label: '⚽ All Games' },
-  { value: 'Predictor',  label: 'Predictor' },
-  { value: 'Streak',     label: 'Streak' },
-  { value: 'Match Line', label: 'Match Line' },
+export const GAME_OPTIONS: { value: Game; label: string; brazilOnly?: true }[] = [
+  { value: 'All',            label: '⚽ All Games' },
+  { value: 'Predictor',      label: 'Predictor' },
+  { value: 'Streak',         label: 'Streak' },
+  { value: 'Match Line',     label: 'Match Line' },
+  { value: 'Pass the Ball',  label: 'Pass the Ball', brazilOnly: true },
 ];

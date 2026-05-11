@@ -1,6 +1,6 @@
 export type Market = 'romania' | 'poland' | 'brazil' | 'belgium' | 'greece' | 'serbia';
 
-export type Game = 'All' | 'Predictor' | 'Streak' | 'Match Line';
+export type Game = 'All' | 'Predictor' | 'Streak' | 'Match Line' | 'Pass the Ball';
 
 export type Slot = 'sk' | 'ml' | 'pd';
 
@@ -51,6 +51,14 @@ export type RoundOverrides = Record<string, DayOverrides>;
 // { 'day-slot': [matchName, istTime] }
 export type EventOverrides = Record<string, [string, string]>;
 
+export interface JackpotState {
+  type: 'instant' | 'pool';
+  prizeType: PrizeType;
+  prizePerWinner: string;
+  poolSize: string;
+  questionsToWin: string;
+}
+
 export interface PlanState {
   market: Market;
   game: Game;
@@ -60,6 +68,30 @@ export interface PlanState {
   stateByGame: StateByGame;
   streakPrizeState: StreakPrizeState;
   lbState: LbState;
+  customRounds: CustomPredictorRound[];
+  // Custom Streak config per market — overrides STREAK_CONFIG defaults when present
+  customStreakConfig: Record<string, { levels: number[]; segments: string[] }>;
+  // Custom tier names per game — overrides TIERS defaults when present
+  customTiers: Record<string, string[]>;
+  // Jackpot (perfect score) config per market — Streak only
+  streakJackpot: Record<string, JackpotState>;
+  // { dayNumber: multiplier } — Brazil-only Pass the Ball game
+  ptbMultipliers: Record<string, number>;
+  // { dayNumber: [matchName, istTime] } — optional fixture per PTB day
+  ptbFixtures: Record<string, [string, string]>;
+}
+
+export interface CustomPredictorFixture {
+  wcDay: number;   // WC calendar day this match falls on
+  match: string;
+  time: string;    // IST time string
+}
+
+export interface CustomPredictorRound {
+  id: string;
+  startDay: number;   // Primary calendar cell (11–49)
+  endDay: number;     // Last faded continuation cell (>= startDay)
+  fixtures: CustomPredictorFixture[];
 }
 
 // Match pool entry

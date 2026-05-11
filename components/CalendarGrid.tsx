@@ -1,9 +1,9 @@
 'use client';
 
 import type { ReactElement } from 'react';
-import type { Market, PrizeTagData, Game, RoundOverrides, EventOverrides, StateByGame, StreakPrizeState } from '@/lib/types';
+import type { Market, PrizeTagData, Game, RoundOverrides, EventOverrides, StateByGame, StreakPrizeState, CustomPredictorRound } from '@/lib/types';
 import { GAME_SLOT, SLOT_CLASS } from '@/lib/constants';
-import { getSlotData, getPrizeTagData } from '@/lib/utils';
+import { getSlotData, getPrizeTagData, getCustomRoundPrimary, getCustomRoundContinuation } from '@/lib/utils';
 import { DayCell } from './DayCell';
 
 interface Props {
@@ -16,10 +16,17 @@ interface Props {
   eventOverrides: EventOverrides;
   stateByGame: StateByGame;
   streakPrizeState: StreakPrizeState;
+  customRounds: CustomPredictorRound[];
+  ptbMultipliers?: Record<string, number>;
+  ptbFixtures?: Record<string, [string, string]>;
+  customStreakConfig?: Record<string, { levels: number[]; segments: string[] }>;
+  customTiers?: Record<string, string[]>;
   onToggle: (day: number) => void;
   onEdit: (day: number) => void;
   onSwap: (day: number, slot: string) => void;
   onAddRound: (day: number, slot: string) => void;
+  onEditRound: (round: CustomPredictorRound) => void;
+  onDeleteRound: (id: string) => void;
 }
 
 // Day range for each month tab
@@ -40,13 +47,21 @@ export function CalendarGrid({
   eventOverrides,
   stateByGame,
   streakPrizeState,
+  customRounds,
+  ptbMultipliers,
+  ptbFixtures,
+  customStreakConfig,
+  customTiers,
   onToggle,
   onEdit,
   onSwap,
   onAddRound,
+  onEditRound,
+  onDeleteRound,
 }: Props) {
   const isAll = game === 'All';
-  const slot = isAll ? null : GAME_SLOT[game as keyof typeof GAME_SLOT];
+  const isPTB = game === 'Pass the Ball';
+  const slot = (isAll || isPTB) ? null : GAME_SLOT[game as keyof typeof GAME_SLOT];
   const { gridStart, firstShown, last } = monthRange(activeMonth);
 
   const days: ReactElement[] = [];
@@ -55,6 +70,31 @@ export function CalendarGrid({
     if (d < firstShown) {
       days.push(
         <div key={`empty-${d}`} className="cal-cell empty" aria-hidden="true" />
+      );
+      continue;
+    }
+
+    if (isPTB) {
+      days.push(
+        <DayCell
+          key={d}
+          day={d}
+          game={game}
+          market={market}
+          ptbMultiplier={ptbMultipliers?.[String(d)]}
+          ptbFixture={ptbFixtures?.[String(d)]}
+          isAll={false}
+          isOff={false}
+          isEditing={editingDay === d}
+          hasOverride={false}
+          prizeTags={[]}
+          activeMonth={activeMonth}
+          eventOverrides={eventOverrides}
+          onToggle={onToggle}
+          onEdit={onEdit}
+          onSwap={onSwap}
+          onAddRound={onAddRound}
+        />
       );
       continue;
     }
@@ -85,13 +125,25 @@ export function CalendarGrid({
         />
       );
     } else {
-      const slotData = slot ? getSlotData(d, market, slot, eventOverrides) : null;
+      // For Predictor, check if this day is part of a custom round
+      const customRoundPrimary = game === 'Predictor'
+        ? getCustomRoundPrimary(d, customRounds)
+        : null;
+      const customRoundContinuation = game === 'Predictor'
+        ? getCustomRoundContinuation(d, customRounds)
+        : null;
+
+      // slotData is irrelevant for custom round days — the cell renders its own content
+      const slotData = (customRoundPrimary || customRoundContinuation)
+        ? null
+        : (slot ? getSlotData(d, market, slot, eventOverrides) : null);
+
       const isOff = toggledOff.has(d);
       const hasOverride = !!(
         roundOverrides[game]?.[String(d)] &&
         Object.keys(roundOverrides[game][String(d)]).length > 0
       );
-      const prizeTags = getPrizeTagData(d, game, market, stateByGame, streakPrizeState, roundOverrides) as PrizeTagData[];
+      const prizeTags = getPrizeTagData(d, game, market, stateByGame, streakPrizeState, roundOverrides, customStreakConfig, customTiers) as PrizeTagData[];
 
       days.push(
         <DayCell
@@ -108,10 +160,14 @@ export function CalendarGrid({
           prizeTags={prizeTags}
           activeMonth={activeMonth}
           eventOverrides={eventOverrides}
+          customRound={customRoundPrimary}
+          isContinuation={customRoundContinuation}
           onToggle={onToggle}
           onEdit={onEdit}
           onSwap={onSwap}
           onAddRound={onAddRound}
+          onEditRound={onEditRound}
+          onDeleteRound={onDeleteRound}
         />
       );
     }
@@ -130,7 +186,7 @@ export function CalendarGrid({
 
   return (
     <div
-      className={`cal-grid${isAll ? ' all-mode' : ''}`}
+      className={`cal-grid${isAll ? ' all-mode' : ''}${isPTB ? ' ptb-mode' : ''}`}
       role="grid"
       aria-label="WC 2026 fixture calendar"
     >

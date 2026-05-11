@@ -1,4 +1,4 @@
-import type { Market, Slot, PlanState, TierState, LbTierState, PrizeTagData, PrizeType } from './types';
+import type { Market, Slot, PlanState, TierState, LbTierState, PrizeTagData, PrizeType, CustomPredictorRound, JackpotState } from './types';
 import {
   BASE_IST,
   WC_ALL_MATCHES,
@@ -107,17 +107,42 @@ export function getMatchPool(day: number, market: Market): [string, string][] {
 }
 
 /**
+ * Returns the custom Predictor round whose startDay equals the given day, or null.
+ */
+export function getCustomRoundPrimary(
+  day: number,
+  customRounds: CustomPredictorRound[] | undefined
+): CustomPredictorRound | null {
+  return customRounds?.find(r => r.startDay === day) ?? null;
+}
+
+/**
+ * Returns the custom Predictor round for which this day is a faded continuation
+ * (i.e. day > startDay && day <= endDay), or null.
+ */
+export function getCustomRoundContinuation(
+  day: number,
+  customRounds: CustomPredictorRound[] | undefined
+): CustomPredictorRound | null {
+  return customRounds?.find(r => day > r.startDay && day <= r.endDay) ?? null;
+}
+
+/**
  * Count active rounds for a given slot across the entire WC period.
+ * For the 'pd' slot, custom Predictor round startDays also count.
  */
 export function getActiveRounds(
   slot: Slot,
   market: Market,
   toggledOff: Set<number>,
-  eventOverrides: Record<string, [string, string]>
+  eventOverrides: Record<string, [string, string]>,
+  customRounds?: CustomPredictorRound[]
 ): number {
   let n = 0;
   for (let d = 11; d <= 49; d++) {
-    if (!toggledOff.has(d) && getSlotData(d, market, slot, eventOverrides)) n++;
+    if (toggledOff.has(d)) continue;
+    if (getSlotData(d, market, slot, eventOverrides)) { n++; continue; }
+    if (slot === 'pd' && getCustomRoundPrimary(d, customRounds)) n++;
   }
   return n;
 }
@@ -129,12 +154,33 @@ export function getRounds(
   game: string,
   market: Market,
   toggledOff: Set<number>,
-  eventOverrides: Record<string, [string, string]>
+  eventOverrides: Record<string, [string, string]>,
+  customRounds?: CustomPredictorRound[]
 ): number {
   if (game === 'All') return 1;
   const slot = GAME_SLOT[game as keyof typeof GAME_SLOT];
   if (!slot) return 1;
-  return Math.max(1, getActiveRounds(slot, market, toggledOff, eventOverrides));
+  return Math.max(1, getActiveRounds(slot, market, toggledOff, eventOverrides, customRounds));
+}
+
+/**
+ * Returns the effective streak config for a market, using custom config if set.
+ */
+export function getEffectiveStreakConfig(
+  market: Market,
+  customConfig: Record<string, { levels: number[]; segments: string[] }>
+): { levels: number[]; segments: string[] } {
+  return customConfig[market] ?? STREAK_CONFIG[market];
+}
+
+/**
+ * Returns the effective tier list for a game, using custom tiers if set.
+ */
+export function getEffectiveTiers(
+  game: string,
+  customTiers: Record<string, string[]>
+): string[] {
+  return customTiers[game] ?? (TIERS[game as keyof typeof TIERS] ?? []);
 }
 
 /**
@@ -146,12 +192,16 @@ export function getPrizeTagData(
   market: Market,
   stateByGame: Record<string, Record<string, { type: PrizeType; perRound: string }>>,
   streakPrizeState: Record<string, Record<string, Record<string, { type: PrizeType; perRound: string }>>>,
-  roundOverrides: Record<string, Record<string, Record<string, { val: number; type: PrizeType }>>>
+  roundOverrides: Record<string, Record<string, Record<string, { val: number; type: PrizeType }>>>,
+  customStreakConfig?: Record<string, { levels: number[]; segments: string[] }>,
+  customTiers?: Record<string, string[]>
 ): PrizeTagData[] {
   if (game === 'All') return [];
 
   if (game === 'Streak') {
-    const cfg = STREAK_CONFIG[market as Market];
+    const cfg = customStreakConfig
+      ? getEffectiveStreakConfig(market as Market, customStreakConfig)
+      : STREAK_CONFIG[market as Market];
     const ss = streakPrizeState[market] ?? {};
     const activeLevels = cfg.levels.filter(lv => {
       const lvState = ss[String(lv)] ?? {};
@@ -163,7 +213,7 @@ export function getPrizeTagData(
   const gameState = stateByGame[game] ?? {};
   const byType: Record<string, number> = {};
 
-  (TIERS[game as keyof typeof TIERS] ?? []).forEach(tier => {
+  (customTiers ? getEffectiveTiers(game, customTiers) : (TIERS[game as keyof typeof TIERS] ?? [])).forEach(tier => {
     const s = gameState[tier];
     if (!s) return;
     const ov = roundOverrides[game]?.[String(day)];
@@ -188,6 +238,13 @@ export function createDefaultTierState(): TierState {
 }
 
 /**
+ * Creates default jackpot state for a market.
+ */
+export function defaultJackpotState(): JackpotState {
+  return { type: 'instant', prizeType: 'Coins', prizePerWinner: '', poolSize: '', questionsToWin: '' };
+}
+
+/**
  * Creates default LB tier state.
  */
 export function createDefaultLbState(): LbTierState {
@@ -200,10 +257,11 @@ export function createDefaultLbState(): LbTierState {
  */
 export function ensureGameState(
   stateByGame: Record<string, Record<string, TierState>>,
-  game: string
+  game: string,
+  customTiers?: Record<string, string[]>
 ): Record<string, Record<string, TierState>> {
   if (game === 'All' || game === 'Streak') return stateByGame;
-  const tiers = TIERS[game as keyof typeof TIERS] ?? [];
+  const tiers = customTiers ? getEffectiveTiers(game, customTiers) : (TIERS[game as keyof typeof TIERS] ?? []);
   const existing = stateByGame[game] ?? {};
   const updated = { ...existing };
   tiers.forEach(t => {
@@ -218,9 +276,10 @@ export function ensureGameState(
  */
 export function ensureStreakState(
   streakPrizeState: Record<string, Record<string, Record<string, TierState>>>,
-  market: Market
+  market: Market,
+  customConfig?: Record<string, { levels: number[]; segments: string[] }>
 ): Record<string, Record<string, Record<string, TierState>>> {
-  const cfg = STREAK_CONFIG[market];
+  const cfg = customConfig ? getEffectiveStreakConfig(market, customConfig) : STREAK_CONFIG[market];
   const existing = streakPrizeState[market] ?? {};
   const marketState = { ...existing };
 
@@ -297,5 +356,11 @@ export function defaultPlanState(market: Market): PlanState {
     stateByGame: {},
     streakPrizeState: {},
     lbState: {},
+    customRounds: [],
+    customStreakConfig: {},
+    customTiers: {},
+    streakJackpot: {},
+    ptbMultipliers: {},
+    ptbFixtures: {},
   };
 }

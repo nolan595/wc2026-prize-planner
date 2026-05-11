@@ -1,8 +1,8 @@
 'use client';
 
-import type { Game, Market, LbState, RoundOverrides, StateByGame, StreakPrizeState, PrizeType } from '@/lib/types';
-import { TIERS, LB_TIERS, STREAK_CONFIG, GAME_SLOT, PRIZE_CSS, PRIZE_ICON } from '@/lib/constants';
-import { getSlotData } from '@/lib/utils';
+import type { Game, Market, LbState, RoundOverrides, StateByGame, StreakPrizeState, PrizeType, CustomPredictorRound } from '@/lib/types';
+import { LB_TIERS, GAME_SLOT, PRIZE_CSS, PRIZE_ICON } from '@/lib/constants';
+import { getSlotData, getCustomRoundPrimary, dayLabel, getEffectiveStreakConfig, getEffectiveTiers } from '@/lib/utils';
 
 interface Props {
   game: Game;
@@ -13,6 +13,11 @@ interface Props {
   roundOverrides: RoundOverrides;
   lbState: LbState;
   eventOverrides: Record<string, [string, string]>;
+  customRounds: CustomPredictorRound[];
+  ptbMultipliers?: Record<string, number>;
+  ptbFixtures?: Record<string, [string, string]>;
+  customStreakConfig?: Record<string, { levels: number[]; segments: string[] }>;
+  customTiers?: Record<string, string[]>;
 }
 
 export function SummaryGrid({
@@ -24,7 +29,45 @@ export function SummaryGrid({
   roundOverrides,
   lbState,
   eventOverrides,
+  customRounds,
+  ptbMultipliers,
+  ptbFixtures,
+  customStreakConfig,
+  customTiers,
 }: Props) {
+  if (game === 'Pass the Ball') {
+    const ptbDays = Object.entries(ptbMultipliers ?? {})
+      .filter(([, v]) => v > 0)
+      .sort(([a], [b]) => parseInt(a) - parseInt(b));
+
+    if (ptbDays.length === 0) {
+      return (
+        <div className="summary-grid">
+          <div style={{ color: 'var(--color-text-faint)', fontSize: '0.875rem' }}>
+            No multipliers set yet. Click any day on the calendar to add one.
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="summary-grid">
+        {ptbDays.map(([day, mult]) => {
+          const fixture = ptbFixtures?.[day];
+          return (
+            <div key={day} className="summary-item ptb">
+              <div className="s-label">{dayLabel(parseInt(day))}</div>
+              <div className="s-total ptb-multiplier-summary">×{mult}</div>
+              {fixture && (
+                <div className="s-sub" style={{ marginTop: 2 }}>{fixture[0]}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   if (game === 'All') {
     return (
       <div className="summary-grid">
@@ -37,12 +80,12 @@ export function SummaryGrid({
 
   const slot = GAME_SLOT[game as keyof typeof GAME_SLOT];
 
-  // Collect active days
+  // Collect active days — for Predictor, also include custom round startDays
   const activeDays: number[] = [];
   for (let d = 11; d <= 49; d++) {
-    if (!toggledOff.has(d) && getSlotData(d, market, slot, eventOverrides)) {
-      activeDays.push(d);
-    }
+    if (toggledOff.has(d)) continue;
+    if (getSlotData(d, market, slot, eventOverrides)) { activeDays.push(d); continue; }
+    if (slot === 'pd' && getCustomRoundPrimary(d, customRounds)) activeDays.push(d);
   }
 
   const totals: Record<string, number> = {};
@@ -56,7 +99,7 @@ export function SummaryGrid({
   };
 
   if (game === 'Streak') {
-    const cfg = STREAK_CONFIG[market];
+    const cfg = getEffectiveStreakConfig(market, customStreakConfig ?? {});
     const ss = streakPrizeState[market] ?? {};
 
     cfg.levels.forEach(lv => {
@@ -81,7 +124,7 @@ export function SummaryGrid({
     const gameState = stateByGame[game] ?? {};
     const gameOvs = roundOverrides[game] ?? {};
 
-    (TIERS[game as keyof typeof TIERS] ?? []).forEach(tier => {
+    getEffectiveTiers(game, customTiers ?? {}).forEach(tier => {
       const s = gameState[tier];
       const defaultVal = parseFloat(s?.perRound ?? '') || 0;
       const hasAnyOverride = activeDays.some(d => gameOvs[String(d)]?.[tier] !== undefined);
