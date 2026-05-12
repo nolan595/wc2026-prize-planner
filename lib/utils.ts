@@ -184,6 +184,19 @@ export function getEffectiveTiers(
 }
 
 /**
+ * Returns the effective tier list for a specific round, falling back to game-level tiers.
+ * roundTierOverrides lets individual rounds have different question counts.
+ */
+export function getEffectiveRoundTiers(
+  game: string,
+  day: number,
+  customTiers: Record<string, string[]>,
+  roundTierOverrides: Record<string, Record<string, string[]>>
+): string[] {
+  return roundTierOverrides[game]?.[String(day)] ?? getEffectiveTiers(game, customTiers);
+}
+
+/**
  * Derives prize tag data to display on a calendar cell.
  */
 export function getPrizeTagData(
@@ -241,7 +254,7 @@ export function createDefaultTierState(): TierState {
  * Creates default jackpot state for a market.
  */
 export function defaultJackpotState(): JackpotState {
-  return { type: 'instant', prizeType: 'Coins', prizePerWinner: '', poolSize: '', questionsToWin: '' };
+  return { type: 'instant', prizeType: 'Coins', prizePerWinner: '', poolSize: '', questionsToWin: '', payoutEvery: '' };
 }
 
 /**
@@ -350,7 +363,7 @@ export function defaultPlanState(market: Market): PlanState {
   return {
     market,
     game: 'All',
-    toggledOff: [],
+    toggledOff: {},
     roundOverrides: {},
     eventOverrides: {},
     stateByGame: {},
@@ -359,6 +372,8 @@ export function defaultPlanState(market: Market): PlanState {
     customRounds: [],
     customStreakConfig: {},
     customTiers: {},
+    roundTierOverrides: {},
+    slotCustomRounds: {},
     streakJackpot: {},
     ptbMultipliers: {},
     ptbFixtures: {},

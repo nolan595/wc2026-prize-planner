@@ -8,6 +8,7 @@ import type {
   PrizeType, RoundOverrides, EventOverrides, StateByGame, StreakPrizeState, OverrideEntry,
   CustomPredictorRound, JackpotState
 } from '@/lib/types';
+type RoundTierOverrides = Record<string, Record<string, string[]>>;
 import {
   MARKET_OPTIONS, GAME_OPTIONS, STREAK_CONFIG, TIERS,
 } from '@/lib/constants';
@@ -22,8 +23,7 @@ import { GameGuide } from '@/components/GameGuide';
 import { CalendarGrid } from '@/components/CalendarGrid';
 import { OverridePanel } from '@/components/OverridePanel';
 import { SwapModal } from '@/components/SwapModal';
-import { CustomEventModal } from '@/components/CustomEventModal';
-import { PredictorRoundModal } from '@/components/PredictorRoundModal';
+import { CustomRoundModal } from '@/components/CustomRoundModal';
 import { PTBPanel } from '@/components/PTBPanel';
 import { PrizeTable } from '@/components/PrizeTable';
 import { StreakPrizeTable } from '@/components/StreakPrizeTable';
@@ -53,7 +53,9 @@ function hydrateFromPayload(payload: unknown, market: Market): AppState {
   const s: AppState = {
     market: market,
     game: (p.game ?? 'All') as Game,
-    toggledOff: Array.isArray(p.toggledOff) ? p.toggledOff : [],
+    toggledOff: (p.toggledOff && typeof p.toggledOff === 'object' && !Array.isArray(p.toggledOff))
+      ? p.toggledOff as Record<string, number[]>
+      : {},
     roundOverrides: (p.roundOverrides ?? {}) as RoundOverrides,
     eventOverrides: (p.eventOverrides ?? {}) as EventOverrides,
     stateByGame: (p.stateByGame ?? {}) as StateByGame,
@@ -68,6 +70,12 @@ function hydrateFromPayload(payload: unknown, market: Market): AppState {
       : {},
     customTiers: (p.customTiers && typeof p.customTiers === 'object' && !Array.isArray(p.customTiers))
       ? p.customTiers as Record<string, string[]>
+      : {},
+    roundTierOverrides: (p.roundTierOverrides && typeof p.roundTierOverrides === 'object' && !Array.isArray(p.roundTierOverrides))
+      ? p.roundTierOverrides as Record<string, Record<string, string[]>>
+      : {},
+    slotCustomRounds: (p.slotCustomRounds && typeof p.slotCustomRounds === 'object' && !Array.isArray(p.slotCustomRounds))
+      ? p.slotCustomRounds as Record<string, [string, string][]>
       : {},
     ptbMultipliers: (p.ptbMultipliers && typeof p.ptbMultipliers === 'object' && !Array.isArray(p.ptbMultipliers))
       ? p.ptbMultipliers as Record<string, number>
@@ -92,7 +100,7 @@ export default function PlannerPage() {
   const [game, setGame] = useState<Game>('All');
   const [activeMonth, setActiveMonth] = useState<'jun' | 'jul'>('jun');
   const [editingDay, setEditingDay] = useState<number | null>(null);
-  const [toggledOff, setToggledOff] = useState<Set<number>>(new Set());
+  const [toggledOffByGame, setToggledOffByGame] = useState<Record<string, number[]>>({});
   const [roundOverrides, setRoundOverrides] = useState<RoundOverrides>({});
   const [eventOverrides, setEventOverrides] = useState<EventOverrides>({});
   const [stateByGame, setStateByGame] = useState<StateByGame>({});
@@ -106,22 +114,23 @@ export default function PlannerPage() {
   const [customTiers, setCustomTiers] = useState<Record<string, string[]>>({});
   const [ptbMultipliers, setPtbMultipliers] = useState<Record<string, number>>({});
   const [ptbFixtures, setPtbFixtures] = useState<Record<string, [string, string]>>({});
+  const [roundTierOverrides, setRoundTierOverrides] = useState<RoundTierOverrides>({});
+  const [slotCustomRounds, setSlotCustomRounds] = useState<Record<string, [string, string][]>>({});
 
   // Modal state
   const [swapModal, setSwapModal] = useState<{ day: number; slot: string } | null>(null);
-  const [customModal, setCustomModal] = useState<{ day: number; slot: string } | null>(null);
-  const [predRoundModal, setPredRoundModal] = useState<{
-    startDay: number;
-    editingRound: CustomPredictorRound | null;
-  } | null>(null);
+  const [customRoundModal, setCustomRoundModal] = useState<{ day: number; slot: string } | null>(null);
 
   const { status: saveStatus, triggerSave, retry } = useAutoSave(market);
+
+  // Derive the current game's toggled-off set
+  const toggledOff = new Set<number>(toggledOffByGame[game] ?? []);
 
   // Build current plan state for saving / passing down
   const buildPlanState = useCallback((): PlanState => ({
     market,
     game,
-    toggledOff: Array.from(toggledOff),
+    toggledOff: toggledOffByGame,
     roundOverrides,
     eventOverrides,
     stateByGame,
@@ -131,9 +140,11 @@ export default function PlannerPage() {
     streakJackpot,
     customStreakConfig,
     customTiers,
+    roundTierOverrides,
+    slotCustomRounds,
     ptbMultipliers,
     ptbFixtures,
-  }), [market, game, toggledOff, roundOverrides, eventOverrides, stateByGame, streakPrizeState, lbState, customRounds, streakJackpot, customStreakConfig, customTiers, ptbMultipliers, ptbFixtures]);
+  }), [market, game, toggledOffByGame, roundOverrides, eventOverrides, stateByGame, streakPrizeState, lbState, customRounds, streakJackpot, customStreakConfig, customTiers, roundTierOverrides, slotCustomRounds, ptbMultipliers, ptbFixtures]);
 
   // Track whether we've done the initial load for the current market
   const initialLoadDoneRef = useRef(false);
@@ -149,7 +160,7 @@ export default function PlannerPage() {
         const payload = res?.data?.payload;
         const hydrated = hydrateFromPayload(payload, market);
         setGame(hydrated.game);
-        setToggledOff(new Set(hydrated.toggledOff));
+        setToggledOffByGame(hydrated.toggledOff);
         setRoundOverrides(hydrated.roundOverrides);
         setEventOverrides(hydrated.eventOverrides);
         setStateByGame(hydrated.stateByGame);
@@ -159,13 +170,15 @@ export default function PlannerPage() {
         setStreakJackpot(hydrated.streakJackpot ?? {});
         setCustomStreakConfig(hydrated.customStreakConfig ?? {});
         setCustomTiers(hydrated.customTiers ?? {});
+        setRoundTierOverrides(hydrated.roundTierOverrides ?? {});
+        setSlotCustomRounds(hydrated.slotCustomRounds ?? {});
         setPtbMultipliers(hydrated.ptbMultipliers ?? {});
         setPtbFixtures(hydrated.ptbFixtures ?? {});
       })
       .catch(() => {
         const hydrated = buildInitialState(market);
         setGame(hydrated.game);
-        setToggledOff(new Set());
+        setToggledOffByGame({});
         setRoundOverrides({});
         setEventOverrides({});
         setStateByGame(hydrated.stateByGame);
@@ -175,6 +188,8 @@ export default function PlannerPage() {
         setStreakJackpot({});
         setCustomStreakConfig({});
         setCustomTiers({});
+        setRoundTierOverrides({});
+        setSlotCustomRounds({});
         setPtbMultipliers({});
         setPtbFixtures({});
       })
@@ -188,7 +203,7 @@ export default function PlannerPage() {
   useEffect(() => {
     if (!initialLoadDoneRef.current || loading) return;
     triggerSave(buildPlanState());
-  }, [toggledOff, roundOverrides, eventOverrides, stateByGame, streakPrizeState, lbState, game, customRounds, streakJackpot, customStreakConfig, customTiers, ptbMultipliers, ptbFixtures]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [toggledOffByGame, roundOverrides, eventOverrides, stateByGame, streakPrizeState, lbState, game, customRounds, streakJackpot, customStreakConfig, customTiers, roundTierOverrides, slotCustomRounds, ptbMultipliers, ptbFixtures]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived values ────────────────────────────────────────
 
@@ -218,7 +233,6 @@ export default function PlannerPage() {
 
   const handleGameChange = useCallback((newGame: Game) => {
     setGame(newGame);
-    setToggledOff(new Set());
     setEditingDay(null);
 
     // Ensure tiers for the new game
@@ -232,14 +246,14 @@ export default function PlannerPage() {
   }, [market, customStreakConfig, customTiers]);
 
   const handleToggle = useCallback((day: number) => {
-    setToggledOff(prev => {
-      const next = new Set(prev);
-      if (next.has(day)) next.delete(day);
-      else next.add(day);
-      return next;
+    setToggledOffByGame(prev => {
+      const current = new Set<number>(prev[game] ?? []);
+      if (current.has(day)) current.delete(day);
+      else current.add(day);
+      return { ...prev, [game]: Array.from(current) };
     });
     if (editingDay === day) setEditingDay(null);
-  }, [editingDay]);
+  }, [editingDay, game]);
 
   const handleSetMonth = useCallback((m: 'jun' | 'jul') => {
     setActiveMonth(m);
@@ -309,40 +323,44 @@ export default function PlannerPage() {
     setSwapModal(null);
   }, []);
 
-  // Custom event modal (Streak / Match Line)
-  const handleOpenCustom = useCallback((day: number, slotStr: string) => {
-    if (game === 'Predictor') {
-      setPredRoundModal({ startDay: day, editingRound: null });
+  // Custom round modal — unified for all games
+  const handleOpenCustomRound = useCallback((day: number, slotStr: string) => {
+    setCustomRoundModal({ day, slot: slotStr });
+  }, []);
+
+  const handleSaveCustomRound = useCallback((day: number, slot: string, events: [string, string][], span: number) => {
+    if (slot === 'pd') {
+      const round: CustomPredictorRound = {
+        id: customRounds.find(r => r.startDay === day)?.id ?? crypto.randomUUID(),
+        startDay: day,
+        endDay: Math.min(day + span - 1, 49),
+        fixtures: events.map(([match, time]) => ({ wcDay: day, match, time })),
+      };
+      setCustomRounds(prev => {
+        const idx = prev.findIndex(r => r.startDay === day);
+        if (idx >= 0) { const next = [...prev]; next[idx] = round; return next; }
+        return [...prev, round];
+      });
     } else {
-      setCustomModal({ day, slot: slotStr });
+      const key = `${day}-${slot}`;
+      setSlotCustomRounds(prev => ({ ...prev, [key]: events }));
+      setEventOverrides(prev => ({ ...prev, [key]: events[0] }));
     }
-  }, [game]);
+    setCustomRoundModal(null);
+  }, [customRounds]);
 
-  const handleApplyCustom = useCallback((day: number, slotStr: string, name: string, time: string) => {
-    setEventOverrides(prev => ({ ...prev, [`${day}-${slotStr}`]: [name, time] }));
-    setCustomModal(null);
-  }, []);
-
-  // Predictor multi-fixture round handlers
-  const handleSavePredRound = useCallback((round: CustomPredictorRound) => {
-    setCustomRounds(prev => {
-      const idx = prev.findIndex(r => r.id === round.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = round;
-        return next;
-      }
-      return [...prev, round];
-    });
-    setPredRoundModal(null);
-  }, []);
-
-  const handleDeletePredRound = useCallback((id: string) => {
-    setCustomRounds(prev => prev.filter(r => r.id !== id));
+  const handleDeleteCustomRound = useCallback((day: number, slot: string) => {
+    if (slot === 'pd') {
+      setCustomRounds(prev => prev.filter(r => r.startDay !== day));
+    } else {
+      const key = `${day}-${slot}`;
+      setSlotCustomRounds(prev => { const n = { ...prev }; delete n[key]; return n; });
+      setEventOverrides(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
   }, []);
 
   const handleEditPredRound = useCallback((round: CustomPredictorRound) => {
-    setPredRoundModal({ startDay: round.startDay, editingRound: round });
+    setCustomRoundModal({ day: round.startDay, slot: 'pd' });
   }, []);
 
   // Pass the Ball multiplier + fixture handlers
@@ -386,7 +404,6 @@ export default function PlannerPage() {
   const handleRemoveStreakLevel = useCallback((level: number) => {
     setCustomStreakConfig(prev => {
       const current = prev[market] ?? STREAK_CONFIG[market];
-      if (current.levels.length <= 1) return prev;
       return { ...prev, [market]: { ...current, levels: current.levels.filter(l => l !== level) } };
     });
   }, [market]);
@@ -411,7 +428,6 @@ export default function PlannerPage() {
   const handleRemoveStreakSegment = useCallback((segment: string) => {
     setCustomStreakConfig(prev => {
       const current = prev[market] ?? STREAK_CONFIG[market];
-      if (current.segments.length <= 1) return prev;
       return { ...prev, [market]: { ...current, segments: current.segments.filter(s => s !== segment) } };
     });
   }, [market]);
@@ -435,6 +451,24 @@ export default function PlannerPage() {
       const current = prev[game] ?? (TIERS[game as keyof typeof TIERS] ?? []);
       if (current.length <= 1) return prev;
       return { ...prev, [game]: current.filter(t => t !== tier) };
+    });
+  }, [game]);
+
+  // Round-specific tier override (question count)
+  const handleSetRoundTiers = useCallback((day: number, tiers: string[]) => {
+    setRoundTierOverrides(prev => {
+      const gameMap = { ...(prev[game] ?? {}) };
+      gameMap[String(day)] = tiers;
+      return { ...prev, [game]: gameMap };
+    });
+  }, [game]);
+
+  const handleClearRoundTiers = useCallback((day: number) => {
+    setRoundTierOverrides(prev => {
+      if (!prev[game]) return prev;
+      const gameMap = { ...prev[game] };
+      delete gameMap[String(day)];
+      return { ...prev, [game]: gameMap };
     });
   }, [game]);
 
@@ -660,6 +694,7 @@ export default function PlannerPage() {
           market={market}
           activeMonth={activeMonth}
           toggledOff={toggledOff}
+          toggledOffByGame={toggledOffByGame}
           editingDay={editingDay}
           roundOverrides={roundOverrides}
           eventOverrides={eventOverrides}
@@ -673,9 +708,9 @@ export default function PlannerPage() {
           onToggle={handleToggle}
           onEdit={handleEdit}
           onSwap={handleOpenSwap}
-          onAddRound={handleOpenCustom}
+          onAddRound={handleOpenCustomRound}
           onEditRound={handleEditPredRound}
-          onDeleteRound={handleDeletePredRound}
+          onDeleteRound={(id) => handleDeleteCustomRound(customRounds.find(r => r.id === id)?.startDay ?? 0, 'pd')}
         />
 
         <AnimatePresence>
@@ -688,9 +723,13 @@ export default function PlannerPage() {
               stateByGame={stateByGame}
               roundOverrides={roundOverrides}
               eventOverrides={eventOverrides}
+              customTiers={customTiers}
+              roundTierOverrides={roundTierOverrides}
               onClose={handleCloseOverride}
               onClear={handleClearOverride}
               onChange={handleOverrideChange}
+              onSetRoundTiers={handleSetRoundTiers}
+              onClearRoundTiers={handleClearRoundTiers}
             />
           )}
           {editingDay !== null && game === 'Pass the Ball' && (
@@ -737,8 +776,17 @@ export default function PlannerPage() {
             rounds={rounds}
             onChange={handlePrizeTierChange}
             customTiers={customTiers}
-            onAddTier={handleAddGameTier}
             onRemoveTier={handleRemoveGameTier}
+            onApplyQuestionCount={(total, start) => {
+              const tiers: string[] = [];
+              for (let i = start; i <= total; i++) tiers.push(`${i}/${total} correct`);
+              setCustomTiers(prev => ({ ...prev, [game]: tiers }));
+              setStateByGame(prev => {
+                const gs = { ...(prev[game] ?? {}) };
+                tiers.forEach(t => { if (!gs[t]) gs[t] = { type: 'Coins', perRound: '', total: '', lastEdited: null }; });
+                return { ...prev, [game]: gs };
+              });
+            }}
           />
         )}
 
@@ -774,12 +822,14 @@ export default function PlannerPage() {
           game={game}
           market={market}
           toggledOff={toggledOff}
+          toggledOffByGame={toggledOffByGame}
           stateByGame={stateByGame}
           streakPrizeState={streakPrizeState}
           roundOverrides={roundOverrides}
           lbState={lbState}
           eventOverrides={eventOverrides}
           customRounds={customRounds}
+          streakJackpot={streakJackpot}
           customStreakConfig={customStreakConfig}
           customTiers={customTiers}
           ptbMultipliers={ptbMultipliers}
@@ -799,24 +849,20 @@ export default function PlannerPage() {
         onReset={handleResetSwap}
       />
 
-      <CustomEventModal
-        isOpen={!!customModal}
-        day={customModal?.day ?? null}
-        slot={customModal?.slot ?? null}
+      <CustomRoundModal
+        isOpen={!!customRoundModal}
+        day={customRoundModal?.day ?? null}
+        slot={(customRoundModal?.slot ?? null) as import('@/lib/types').Slot | null}
         market={market}
-        eventOverrides={eventOverrides}
-        onClose={() => setCustomModal(null)}
-        onApply={handleApplyCustom}
-      />
-
-      <PredictorRoundModal
-        isOpen={!!predRoundModal}
-        startDay={predRoundModal?.startDay ?? null}
-        market={market}
-        editingRound={predRoundModal?.editingRound}
-        onClose={() => setPredRoundModal(null)}
-        onSave={handleSavePredRound}
-        onDelete={handleDeletePredRound}
+        existingEvent={customRoundModal && customRoundModal.slot !== 'pd'
+          ? (slotCustomRounds[`${customRoundModal.day}-${customRoundModal.slot}`]?.[0] ?? eventOverrides[`${customRoundModal.day}-${customRoundModal.slot}`] ?? null)
+          : null}
+        existingRound={customRoundModal?.slot === 'pd'
+          ? (customRounds.find(r => r.startDay === customRoundModal.day) ?? null)
+          : null}
+        onClose={() => setCustomRoundModal(null)}
+        onSave={handleSaveCustomRound}
+        onDelete={handleDeleteCustomRound}
       />
 
     </main>

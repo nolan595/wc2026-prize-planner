@@ -179,7 +179,7 @@ export function DayCell({
             className="day-btn"
             title="Edit this round"
             aria-label={`Edit round on ${dayLabel(day)}`}
-            onClick={e => { e.stopPropagation(); onEditRound?.(customRound); }}
+            onClick={e => { e.stopPropagation(); onAddRound(day, 'pd'); }}
           >
             ✏
           </button>
@@ -334,6 +334,16 @@ export function DayCell({
         >
           &#8635;
         </button>
+        {!isOff && !isCustom && (
+          <button
+            className="day-btn"
+            title="Replace with custom round"
+            aria-label={`Replace ${dayLabel(day)} with a custom round`}
+            onClick={e => { e.stopPropagation(); onAddRound(day, slotKey); }}
+          >
+            ＋
+          </button>
+        )}
       </div>
     </div>
   );

@@ -11,21 +11,31 @@ interface Props {
   rounds: number;
   onChange: (tier: string, update: Partial<TierState>) => void;
   customTiers: Record<string, string[]>;
-  onAddTier: (tier: string) => void;
   onRemoveTier: (tier: string) => void;
+  onApplyQuestionCount: (total: number, start: number) => void;
 }
 
-export function PrizeTable({ game, gameState, rounds, onChange, customTiers, onAddTier, onRemoveTier }: Props) {
-  const [newTierInput, setNewTierInput] = useState('');
+export function PrizeTable({ game, gameState, rounds, onChange, customTiers, onRemoveTier, onApplyQuestionCount }: Props) {
+  const [qCount, setQCount] = useState('');
+  const [qStart, setQStart] = useState('');
+
+  const qStartPlaceholder = (() => {
+    const total = parseInt(qCount);
+    return total >= 2 ? String(Math.floor(total / 2) + 1) : 'e.g. 3';
+  })();
+
+  function handleApplyQCount() {
+    const total = parseInt(qCount);
+    if (!total || total < 2) return;
+    const defaultStart = Math.floor(total / 2) + 1;
+    const startRaw = parseInt(qStart);
+    const start = (startRaw >= 1 && startRaw <= total) ? startRaw : defaultStart;
+    onApplyQuestionCount(total, start);
+    setQCount('');
+    setQStart('');
+  }
 
   const tiers = getEffectiveTiers(game, customTiers);
-
-  const handleAddTier = () => {
-    const v = newTierInput.trim();
-    if (!v || tiers.includes(v)) return;
-    onAddTier(v);
-    setNewTierInput('');
-  };
 
   return (
     <div>
@@ -109,32 +119,41 @@ export function PrizeTable({ game, gameState, rounds, onChange, customTiers, onA
         </tbody>
       </table>
 
-      <div className="tier-management-strip single-col">
-        <div className="tier-mgmt-label">Tiers</div>
-        <div className="tier-chips">
-          {tiers.map(tier => (
-            <span key={tier} className="tier-chip">
-              {tier}
-              {tiers.length > 1 && (
-                <button onClick={() => onRemoveTier(tier)} aria-label={`Remove ${tier}`}>×</button>
-              )}
-            </span>
-          ))}
-          <div className="tier-chip-add">
-            <input
-              type="text"
-              placeholder="New tier name"
-              value={newTierInput}
-              aria-label="New tier name"
-              onChange={e => setNewTierInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleAddTier(); }}
-            />
-            <button onClick={handleAddTier}>+ Add tier</button>
-          </div>
-        </div>
+      {/* Question count — auto-generates tiers like "7/12 correct" */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 12, marginBottom: 4 }}>
+        <span style={{ fontSize: '0.66rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Questions per round:</span>
+        <input
+          type="number"
+          min="1"
+          max="30"
+          placeholder="e.g. 6"
+          value={qCount}
+          onChange={e => setQCount(e.target.value)}
+          style={{ width: 70, fontSize: '0.82rem', padding: '5px 8px' }}
+          aria-label="Total questions per round"
+        />
+        <span style={{ fontSize: '0.66rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Prize from:</span>
+        <input
+          type="number"
+          min="1"
+          max="30"
+          placeholder={qStartPlaceholder}
+          value={qStart}
+          onChange={e => setQStart(e.target.value)}
+          style={{ width: 70, fontSize: '0.82rem', padding: '5px 8px' }}
+          aria-label="First question that wins a prize"
+        />
+        <button
+          className="btn-apply"
+          style={{ margin: 0, fontSize: '0.72rem', padding: '5px 12px' }}
+          onClick={handleApplyQCount}
+        >
+          Apply
+        </button>
       </div>
 
-      <p className="hint">Type in either column — the other updates automatically.</p>
+
+<p className="hint">Type in either column — the other updates automatically.</p>
     </div>
   );
 }

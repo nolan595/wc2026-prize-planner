@@ -79,15 +79,13 @@ export function StreakPrizeTable({
                 <td colSpan={5}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span>Prize Level <span className="sk-level-badge">Q{lv}</span></span>
-                    {cfg.levels.length > 1 && (
-                      <button
-                        className="tier-remove-btn"
-                        onClick={() => onRemoveLevel(lv)}
-                        aria-label={`Remove Q${lv} level`}
-                      >
-                        × Remove level
-                      </button>
-                    )}
+                    <button
+                      className="tier-remove-btn"
+                      onClick={() => onRemoveLevel(lv)}
+                      aria-label={`Remove Q${lv} level`}
+                    >
+                      × Remove level
+                    </button>
                   </div>
                 </td>
               </tr>,
@@ -143,16 +141,14 @@ export function StreakPrizeTable({
                       />
                     </td>
                     <td className="tier-action-cell">
-                      {cfg.segments.length > 1 && (
-                        <button
-                          className="tier-remove-icon"
-                          onClick={() => onRemoveSegment(seg)}
-                          aria-label={`Remove ${seg} segment`}
-                          title={`Remove ${seg} from all levels`}
-                        >
-                          ×
-                        </button>
-                      )}
+                      <button
+                        className="tier-remove-icon"
+                        onClick={() => onRemoveSegment(seg)}
+                        aria-label={`Remove ${seg} segment`}
+                        title={`Remove ${seg} from all levels`}
+                      >
+                        ×
+                      </button>
                     </td>
                   </tr>
                 );
@@ -222,6 +218,20 @@ export function StreakPrizeTable({
               onChange={e => onJackpotChange({ questionsToWin: e.target.value })}
             />
           </div>
+          {jackpot.type === 'pool' && (
+            <div className="jackpot-field">
+              <label htmlFor="jp-payout-every">Paid every (LB periods)</label>
+              <input
+                id="jp-payout-every"
+                type="number"
+                min="1"
+                placeholder="e.g. 2"
+                value={jackpot.payoutEvery ?? ''}
+                aria-label="Jackpot paid every N leaderboard periods"
+                onChange={e => onJackpotChange({ payoutEvery: e.target.value })}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -235,9 +245,7 @@ export function StreakPrizeTable({
             {cfg.levels.map(lv => (
               <span key={lv} className="tier-chip">
                 Q{lv}
-                {cfg.levels.length > 1 && (
-                  <button onClick={() => onRemoveLevel(lv)} aria-label={`Remove Q${lv}`}>×</button>
-                )}
+                <button onClick={() => onRemoveLevel(lv)} aria-label={`Remove Q${lv}`}>×</button>
               </span>
             ))}
             <div className="tier-chip-add">
@@ -261,9 +269,7 @@ export function StreakPrizeTable({
             {cfg.segments.map(seg => (
               <span key={seg} className="tier-chip">
                 {seg}
-                {cfg.segments.length > 1 && (
-                  <button onClick={() => onRemoveSegment(seg)} aria-label={`Remove ${seg} segment`}>×</button>
-                )}
+                <button onClick={() => onRemoveSegment(seg)} aria-label={`Remove ${seg} segment`}>×</button>
               </span>
             ))}
             <div className="tier-chip-add">

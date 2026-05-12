@@ -6,11 +6,14 @@ import { GAME_SLOT, SLOT_CLASS } from '@/lib/constants';
 import { getSlotData, getPrizeTagData, getCustomRoundPrimary, getCustomRoundContinuation } from '@/lib/utils';
 import { DayCell } from './DayCell';
 
+const SLOT_TO_GAME: Record<string, string> = { sk: 'Streak', ml: 'Match Line', pd: 'Predictor' };
+
 interface Props {
   game: Game;
   market: Market;
   activeMonth: 'jun' | 'jul';
   toggledOff: Set<number>;
+  toggledOffByGame?: Record<string, number[]>;
   editingDay: number | null;
   roundOverrides: RoundOverrides;
   eventOverrides: EventOverrides;
@@ -42,6 +45,7 @@ export function CalendarGrid({
   market,
   activeMonth,
   toggledOff,
+  toggledOffByGame,
   editingDay,
   roundOverrides,
   eventOverrides,
@@ -102,7 +106,7 @@ export function CalendarGrid({
     if (isAll) {
       const slots = (['sk', 'ml', 'pd'] as const)
         .map(sl => ({ sl, data: getSlotData(d, market, sl, eventOverrides) }))
-        .filter(x => x.data !== null) as { sl: 'sk' | 'ml' | 'pd'; data: [string, string] }[];
+        .filter(x => x.data !== null && !(toggledOffByGame?.[SLOT_TO_GAME[x.sl]]?.includes(d))) as { sl: 'sk' | 'ml' | 'pd'; data: [string, string] }[];
 
       days.push(
         <DayCell

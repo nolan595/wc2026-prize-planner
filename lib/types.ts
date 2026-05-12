@@ -57,12 +57,13 @@ export interface JackpotState {
   prizePerWinner: string;
   poolSize: string;
   questionsToWin: string;
+  payoutEvery: string; // pool only — paid every N leaderboard periods
 }
 
 export interface PlanState {
   market: Market;
   game: Game;
-  toggledOff: number[];
+  toggledOff: Record<string, number[]>;
   roundOverrides: RoundOverrides;
   eventOverrides: EventOverrides;
   stateByGame: StateByGame;
@@ -73,6 +74,10 @@ export interface PlanState {
   customStreakConfig: Record<string, { levels: number[]; segments: string[] }>;
   // Custom tier names per game — overrides TIERS defaults when present
   customTiers: Record<string, string[]>;
+  // Per-round tier overrides: { game: { day: string[] } } — overrides customTiers/TIERS for a specific round
+  roundTierOverrides: Record<string, Record<string, string[]>>;
+  // Custom rounds for Streak/ML: { 'day-slot': [[match, time], ...] }
+  slotCustomRounds: Record<string, [string, string][]>;
   // Jackpot (perfect score) config per market — Streak only
   streakJackpot: Record<string, JackpotState>;
   // { dayNumber: multiplier } — Brazil-only Pass the Ball game
