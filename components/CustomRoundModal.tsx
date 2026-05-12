@@ -205,18 +205,16 @@ export function CustomRoundModal({
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '0.7rem', color: '#7a9abf', whiteSpace: 'nowrap' }}>Covers</span>
-                  <select
+                  <input
+                    type="number"
+                    min="1"
+                    max="39"
                     value={spanDays}
-                    onChange={e => setSpanDays(Number(e.target.value))}
-                    style={{ flex: 1, minWidth: 80, fontSize: '0.76rem', padding: '5px 7px' }}
+                    onChange={e => setSpanDays(Math.max(1, parseInt(e.target.value) || 1))}
+                    style={{ width: 70, fontSize: '0.76rem', padding: '5px 7px' }}
                     aria-label="Number of days this round spans"
-                  >
-                    <option value={1}>1 day only</option>
-                    <option value={2}>2 days</option>
-                    <option value={3}>3 days</option>
-                    <option value={4}>4 days</option>
-                    <option value={5}>5 days</option>
-                  </select>
+                  />
+                  <span style={{ fontSize: '0.7rem', color: '#7a9abf', whiteSpace: 'nowrap' }}>day{spanDays !== 1 ? 's' : ''}</span>
                   {spanDays > 1 && (
                     <span style={{ fontSize: '0.7rem', color: '#f5c518', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
                       ({dayLabel(day)} – {dayLabel(spanEndDay)})

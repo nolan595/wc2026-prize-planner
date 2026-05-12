@@ -26,8 +26,8 @@ interface Props {
   prizeTags: PrizeTagData[];
   activeMonth: 'jun' | 'jul';
   eventOverrides: Record<string, [string, string]>;
-  // Custom Predictor round state for this day
-  customRound?: CustomPredictorRound | null;
+  // Custom Predictor rounds starting on this day (can be multiple)
+  customRounds?: CustomPredictorRound[];
   isContinuation?: CustomPredictorRound | null;
   // Pass the Ball multiplier and fixture for this day
   ptbMultiplier?: number;
@@ -35,7 +35,7 @@ interface Props {
   onToggle: (day: number) => void;
   onEdit: (day: number) => void;
   onSwap: (day: number, slot: string) => void;
-  onAddRound: (day: number, slot: string) => void;
+  onAddRound: (day: number, slot: string, roundId?: string) => void;
   onEditRound?: (round: CustomPredictorRound) => void;
   onDeleteRound?: (id: string) => void;
 }
@@ -54,7 +54,7 @@ export function DayCell({
   prizeTags,
   activeMonth,
   eventOverrides,
-  customRound,
+  customRounds,
   isContinuation,
   ptbMultiplier,
   ptbFixture,
@@ -67,17 +67,27 @@ export function DayCell({
 }: Props) {
   const country = COUNTRIES[market];
   const offset = country.offset;
+  const slotKey = game === 'Streak' ? 'sk' : game === 'Match Line' ? 'ml' : 'pd';
 
-  // Faded continuation cell — this day belongs to a multi-day round that started earlier
-  if (isContinuation) {
+  // Pure continuation cell — no primary rounds and no existing fixture on this day
+  if (isContinuation && (!customRounds || customRounds.length === 0) && !slotData) {
     return (
       <div
-        className="cal-cell continuation active-pd"
-        aria-label={`${dayLabel(day)} — Predictor round continues`}
-        aria-hidden="true"
+        className={`cal-cell continuation active-pd has-add`}
+        aria-label={`${dayLabel(day)} — round continues`}
       >
         <div className="day-num">{dayLabel(day)}</div>
-        <div className="continuation-label">↩ Predictor</div>
+        <div className="continuation-label">↩ {isContinuation.fixtures[0]?.match ?? 'Predictor'}</div>
+        <div className="day-actions" role="group">
+          <button
+            className="day-btn"
+            title="Add a custom round on this day"
+            aria-label={`Add custom round on ${dayLabel(day)}`}
+            onClick={e => { e.stopPropagation(); onAddRound(day, slotKey); }}
+          >
+            ＋
+          </button>
+        </div>
       </div>
     );
   }
@@ -123,8 +133,8 @@ export function DayCell({
     );
   }
 
-  // Primary cell for a custom multi-fixture Predictor round
-  if (customRound) {
+  // Primary cell for one or more custom Predictor rounds starting on this day
+  if (customRounds && customRounds.length > 0) {
     let cellClass = 'cal-cell has-fixture active-pd';
     if (isOff) cellClass += ' toggled-off';
     if (isEditing) cellClass += ' editing';
@@ -134,7 +144,7 @@ export function DayCell({
         className={cellClass}
         onClick={() => onToggle(day)}
         role="gridcell"
-        aria-label={`${dayLabel(day)} — Custom Predictor round, ${customRound.fixtures.length} fixture${customRound.fixtures.length !== 1 ? 's' : ''}`}
+        aria-label={`${dayLabel(day)} — ${customRounds.length} custom Predictor round${customRounds.length !== 1 ? 's' : ''}`}
         aria-pressed={!isOff}
       >
         <div className="day-num">
@@ -143,26 +153,53 @@ export function DayCell({
           {hasOverride && !isOff && <span className="override-dot" />}
         </div>
 
-        {customRound.endDay > customRound.startDay && (
-          <div className="custom-round-span">→ {dayLabel(customRound.endDay)}</div>
+        {isContinuation && (
+          <>
+            <div className="continuation-label">↩ {isContinuation.fixtures[0]?.match ?? 'Predictor'}</div>
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', margin: '3px 0' }} />
+          </>
         )}
 
-        <div className="custom-round-fixtures">
-          {customRound.fixtures.length === 0 ? (
-            <div className="custom-round-empty">No fixtures yet</div>
-          ) : (
-            <>
-              {customRound.fixtures.slice(0, 2).map((f, i) => (
-                <div key={i} className="custom-round-fixture-item">{f.match}</div>
-              ))}
-              {customRound.fixtures.length > 2 && (
-                <div className="custom-round-fixture-more">
-                  +{customRound.fixtures.length - 2} more
-                </div>
+        {customRounds.map(cr => (
+          <div key={cr.id} className="custom-round-block" onClick={e => e.stopPropagation()}>
+            {cr.endDay > cr.startDay && (
+              <div className="custom-round-span">→ {dayLabel(cr.endDay)}</div>
+            )}
+            <div className="custom-round-fixtures">
+              {cr.fixtures.length === 0 ? (
+                <div className="custom-round-empty">No fixtures yet</div>
+              ) : (
+                <>
+                  {cr.fixtures.slice(0, 2).map((f, i) => (
+                    <div key={i} className="custom-round-fixture-item">{f.match}</div>
+                  ))}
+                  {cr.fixtures.length > 2 && (
+                    <div className="custom-round-fixture-more">+{cr.fixtures.length - 2} more</div>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </div>
+            </div>
+            <div className="custom-round-actions">
+              <button
+                className="day-btn"
+                title="Edit this round"
+                aria-label={`Edit round on ${dayLabel(day)}`}
+                onClick={e => { e.stopPropagation(); onAddRound(day, 'pd', cr.id); }}
+              >
+                ✏
+              </button>
+              <button
+                className="day-btn"
+                title="Delete this round"
+                aria-label={`Delete round on ${dayLabel(day)}`}
+                style={{ color: 'var(--color-error)' }}
+                onClick={e => { e.stopPropagation(); onDeleteRound?.(cr.id); }}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        ))}
 
         {!isOff && prizeTags.length > 0 && (
           <div className="prize-tags">
@@ -174,23 +211,14 @@ export function DayCell({
           </div>
         )}
 
-        <div className="day-actions" role="group" aria-label={`Actions for ${dayLabel(day)}`}>
+        <div className="day-actions" role="group" aria-label={`Actions for ${dayLabel(day)}`} onClick={e => e.stopPropagation()}>
           <button
             className="day-btn"
-            title="Edit this round"
-            aria-label={`Edit round on ${dayLabel(day)}`}
-            onClick={e => { e.stopPropagation(); onAddRound(day, 'pd'); }}
+            title="Add another round"
+            aria-label={`Add another round on ${dayLabel(day)}`}
+            onClick={e => { e.stopPropagation(); onAddRound(day, slotKey); }}
           >
-            ✏
-          </button>
-          <button
-            className="day-btn"
-            title="Delete this round"
-            aria-label={`Delete round on ${dayLabel(day)}`}
-            style={{ color: 'var(--color-error)' }}
-            onClick={e => { e.stopPropagation(); onDeleteRound?.(customRound.id); }}
-          >
-            ✕
+            +
           </button>
         </div>
       </div>
@@ -225,30 +253,24 @@ export function DayCell({
     );
   }
 
-  // Single-game mode — derive the slot key once, used throughout
-  const slotKeyNoFixture = game === 'Streak' ? 'sk' : game === 'Match Line' ? 'ml' : 'pd';
   const hasFixture = !!slotData;
 
   if (!hasFixture) {
-    const isPredictor = game === 'Predictor';
     return (
       <div className="cal-cell no-fixture">
         <div className="day-num" style={{ opacity: 0.6 }}>{dayLabel(day)}</div>
         <button
           className="add-round-btn"
-          title={isPredictor ? 'Add a Predictor round on this day' : activeMonth === 'jul' ? 'Add a custom event on this day' : 'Add a round on this day'}
+          title="Add a custom round on this day"
           onClick={e => {
             e.stopPropagation();
-            // Predictor always opens the multi-fixture round builder
-            if (isPredictor) {
-              onAddRound(day, slotKeyNoFixture);
-            } else if (activeMonth === 'jul') {
-              onAddRound(day, slotKeyNoFixture);
+            if (activeMonth === 'jul') {
+              onAddRound(day, slotKey);
             } else {
-              onSwap(day, slotKeyNoFixture);
+              onSwap(day, slotKey);
             }
           }}
-          aria-label={`Add ${isPredictor ? 'Predictor round' : 'round'} on ${dayLabel(day)}`}
+          aria-label={`Add round on ${dayLabel(day)}`}
         >
           +
         </button>
@@ -267,7 +289,6 @@ export function DayCell({
   // A slot is considered "custom" (user-typed name) when it's a July day and the
   // eventOverrides key is present. July pool entries are all placeholder labels
   // (e.g. "R32 — Match A"), so any override on a July day is a custom event.
-  const slotKey = game === 'Streak' ? 'sk' : game === 'Match Line' ? 'ml' : 'pd';
   const isCustom =
     activeMonth === 'jul' &&
     !!eventOverrides[`${day}-${slotKey}`];
@@ -286,6 +307,12 @@ export function DayCell({
         {hasOverride && !isOff && <span className="override-dot" />}
       </div>
 
+      {isContinuation && (
+        <>
+          <div className="continuation-label">↩ {isContinuation.fixtures[0]?.match ?? 'Predictor'}</div>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', margin: '3px 0' }} />
+        </>
+      )}
       <div className="match-name">{match}{isHome ? ' ★' : ''}</div>
       <div className="match-time">{toLocal(istTime, offset)}</div>
 
@@ -334,16 +361,14 @@ export function DayCell({
         >
           &#8635;
         </button>
-        {!isOff && !isCustom && (
-          <button
-            className="day-btn"
-            title="Replace with custom round"
-            aria-label={`Replace ${dayLabel(day)} with a custom round`}
-            onClick={e => { e.stopPropagation(); onAddRound(day, slotKey); }}
-          >
-            ＋
-          </button>
-        )}
+        <button
+          className="day-btn"
+          title="Add a custom round on this day"
+          aria-label={`Add custom round on ${dayLabel(day)}`}
+          onClick={e => { e.stopPropagation(); onAddRound(day, slotKey); }}
+        >
+          ＋
+        </button>
       </div>
     </div>
   );

@@ -119,7 +119,7 @@ export default function PlannerPage() {
 
   // Modal state
   const [swapModal, setSwapModal] = useState<{ day: number; slot: string } | null>(null);
-  const [customRoundModal, setCustomRoundModal] = useState<{ day: number; slot: string } | null>(null);
+  const [customRoundModal, setCustomRoundModal] = useState<{ day: number; slot: string; roundId?: string } | null>(null);
 
   const { status: saveStatus, triggerSave, retry } = useAutoSave(market);
 
@@ -324,20 +324,20 @@ export default function PlannerPage() {
   }, []);
 
   // Custom round modal — unified for all games
-  const handleOpenCustomRound = useCallback((day: number, slotStr: string) => {
-    setCustomRoundModal({ day, slot: slotStr });
+  const handleOpenCustomRound = useCallback((day: number, slotStr: string, roundId?: string) => {
+    setCustomRoundModal({ day, slot: slotStr, roundId });
   }, []);
 
-  const handleSaveCustomRound = useCallback((day: number, slot: string, events: [string, string][], span: number) => {
+  const handleSaveCustomRound = useCallback((day: number, slot: string, events: [string, string][], span: number, editingRoundId?: string) => {
     if (slot === 'pd') {
       const round: CustomPredictorRound = {
-        id: customRounds.find(r => r.startDay === day)?.id ?? crypto.randomUUID(),
+        id: editingRoundId ?? crypto.randomUUID(),
         startDay: day,
         endDay: Math.min(day + span - 1, 49),
         fixtures: events.map(([match, time]) => ({ wcDay: day, match, time })),
       };
       setCustomRounds(prev => {
-        const idx = prev.findIndex(r => r.startDay === day);
+        const idx = editingRoundId ? prev.findIndex(r => r.id === editingRoundId) : -1;
         if (idx >= 0) { const next = [...prev]; next[idx] = round; return next; }
         return [...prev, round];
       });
@@ -349,9 +349,9 @@ export default function PlannerPage() {
     setCustomRoundModal(null);
   }, [customRounds]);
 
-  const handleDeleteCustomRound = useCallback((day: number, slot: string) => {
+  const handleDeleteCustomRound = useCallback((day: number, slot: string, roundId?: string) => {
     if (slot === 'pd') {
-      setCustomRounds(prev => prev.filter(r => r.startDay !== day));
+      setCustomRounds(prev => roundId ? prev.filter(r => r.id !== roundId) : prev.filter(r => r.startDay !== day));
     } else {
       const key = `${day}-${slot}`;
       setSlotCustomRounds(prev => { const n = { ...prev }; delete n[key]; return n; });
@@ -710,7 +710,7 @@ export default function PlannerPage() {
           onSwap={handleOpenSwap}
           onAddRound={handleOpenCustomRound}
           onEditRound={handleEditPredRound}
-          onDeleteRound={(id) => handleDeleteCustomRound(customRounds.find(r => r.id === id)?.startDay ?? 0, 'pd')}
+          onDeleteRound={(id) => handleDeleteCustomRound(0, 'pd', id)}
         />
 
         <AnimatePresence>
@@ -756,12 +756,9 @@ export default function PlannerPage() {
       </div>
 
       {/* ── Prize breakdown ── */}
-      <div className="card">
+      {game !== 'All' && <div className="card">
         <div className="card-title">Prize Breakdown</div>
 
-        {game === 'All' && (
-          <div className="all-notice">Select a specific game above to configure prizes.</div>
-        )}
 
         {game === 'Pass the Ball' && (
           <div className="all-notice">
@@ -769,7 +766,7 @@ export default function PlannerPage() {
           </div>
         )}
 
-        {game !== 'All' && game !== 'Streak' && game !== 'Pass the Ball' && (
+        {game !== 'Streak' && game !== 'Pass the Ball' && (
           <PrizeTable
             game={game as Exclude<Game, 'All' | 'Streak' | 'Pass the Ball'>}
             gameState={currentGameState}
@@ -805,7 +802,7 @@ export default function PlannerPage() {
             onJackpotChange={handleJackpotChange}
           />
         )}
-      </div>
+      </div>}
 
       {/* ── Leaderboard (Streak only) ── */}
       <LeaderboardTable
@@ -857,12 +854,12 @@ export default function PlannerPage() {
         existingEvent={customRoundModal && customRoundModal.slot !== 'pd'
           ? (slotCustomRounds[`${customRoundModal.day}-${customRoundModal.slot}`]?.[0] ?? eventOverrides[`${customRoundModal.day}-${customRoundModal.slot}`] ?? null)
           : null}
-        existingRound={customRoundModal?.slot === 'pd'
-          ? (customRounds.find(r => r.startDay === customRoundModal.day) ?? null)
+        existingRound={customRoundModal?.slot === 'pd' && customRoundModal.roundId
+          ? (customRounds.find(r => r.id === customRoundModal.roundId) ?? null)
           : null}
         onClose={() => setCustomRoundModal(null)}
-        onSave={handleSaveCustomRound}
-        onDelete={handleDeleteCustomRound}
+        onSave={(day, slot, events, span) => handleSaveCustomRound(day, slot, events, span, customRoundModal?.roundId)}
+        onDelete={(day, slot) => handleDeleteCustomRound(day, slot, customRoundModal?.roundId)}
       />
 
     </main>

@@ -3,7 +3,7 @@
 import type { ReactElement } from 'react';
 import type { Market, PrizeTagData, Game, RoundOverrides, EventOverrides, StateByGame, StreakPrizeState, CustomPredictorRound } from '@/lib/types';
 import { GAME_SLOT, SLOT_CLASS } from '@/lib/constants';
-import { getSlotData, getPrizeTagData, getCustomRoundPrimary, getCustomRoundContinuation } from '@/lib/utils';
+import { getSlotData, getPrizeTagData, getCustomRoundContinuation } from '@/lib/utils';
 import { DayCell } from './DayCell';
 
 const SLOT_TO_GAME: Record<string, string> = { sk: 'Streak', ml: 'Match Line', pd: 'Predictor' };
@@ -27,7 +27,7 @@ interface Props {
   onToggle: (day: number) => void;
   onEdit: (day: number) => void;
   onSwap: (day: number, slot: string) => void;
-  onAddRound: (day: number, slot: string) => void;
+  onAddRound: (day: number, slot: string, roundId?: string) => void;
   onEditRound: (round: CustomPredictorRound) => void;
   onDeleteRound: (id: string) => void;
 }
@@ -129,16 +129,16 @@ export function CalendarGrid({
         />
       );
     } else {
-      // For Predictor, check if this day is part of a custom round
-      const customRoundPrimary = game === 'Predictor'
-        ? getCustomRoundPrimary(d, customRounds)
-        : null;
+      // For Predictor, collect all rounds starting on this day, and check for any continuation
+      const customRoundsPrimary = game === 'Predictor'
+        ? customRounds.filter(r => r.startDay === d)
+        : [];
       const customRoundContinuation = game === 'Predictor'
         ? getCustomRoundContinuation(d, customRounds)
         : null;
 
-      // slotData is irrelevant for custom round days — the cell renders its own content
-      const slotData = (customRoundPrimary || customRoundContinuation)
+      // slotData is suppressed only when primary custom rounds own this cell
+      const slotData = customRoundsPrimary.length > 0
         ? null
         : (slot ? getSlotData(d, market, slot, eventOverrides) : null);
 
@@ -164,7 +164,7 @@ export function CalendarGrid({
           prizeTags={prizeTags}
           activeMonth={activeMonth}
           eventOverrides={eventOverrides}
-          customRound={customRoundPrimary}
+          customRounds={customRoundsPrimary}
           isContinuation={customRoundContinuation}
           onToggle={onToggle}
           onEdit={onEdit}

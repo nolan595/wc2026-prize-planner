@@ -814,15 +814,40 @@ tr.sk-level-header td {
   border-left: 3px dashed var(--color-predictor);
 }
 
+.cal-cell.continuation.has-add {
+  opacity: 0.6;
+  pointer-events: auto;
+  cursor: default;
+}
+
+.cal-cell.continuation.has-add:hover {
+  opacity: 0.85;
+}
+
+.cal-cell.continuation.has-add .day-actions {
+  display: flex;
+}
+
 .continuation-label {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 0.6rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--color-predictor);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 4px;
-  opacity: 0.8;
+  background: rgba(74, 158, 255, 0.08);
+  border-left: 2px solid var(--color-predictor);
+  border-radius: 0 3px 3px 0;
+  padding: 2px 5px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.9;
+}
+
+/* When inside a normal fixture cell, the continuation label sits above the fixture */
+.cal-cell.has-fixture .continuation-label {
+  margin-top: 2px;
+  margin-left: -1px;
 }
 
 /* ── Custom Predictor round primary cells ── */
@@ -860,6 +885,24 @@ tr.sk-level-header td {
   font-size: 0.75rem;
   color: var(--color-text-faint);
   font-style: italic;
+}
+
+.custom-round-block {
+  border-top: 1px solid rgba(74, 158, 255, 0.15);
+  padding-top: 4px;
+  margin-top: 4px;
+}
+
+.custom-round-block:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.custom-round-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
 }
 
 /* ── PredictorRoundModal ── */
