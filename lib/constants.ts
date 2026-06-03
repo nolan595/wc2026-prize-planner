@@ -1,79 +1,241 @@
 import type { Market, PrizeType, Slot, Game } from './types';
 
 // Default match assignments per calendar day (days 11–49) by slot
-// Times are in IST (India Standard Time, UTC+5:30)
+// Times are in IST (Irish Standard Time, UTC+1)
 export const BASE_IST: Record<number, Partial<Record<Slot, [string, string]>>> = {
-  11: { ml: ['Mexico v South Africa',        '8:00 PM'] },
-  12: { sk: ['South Korea v Czechia',         '2:00 AM'], ml: ['Canada v Bosnia & Herzegovina', '8:00 PM'] },
-  13: { sk: ['USA v Paraguay',                '2:00 AM'], ml: ['Qatar v Switzerland',            '8:00 PM'], pd: ['Brazil v Morocco',        '11:00 PM'] },
-  14: { sk: ['Haiti v Scotland',              '2:00 AM'], ml: ['Germany v Curacao',              '6:00 PM'] },
-  15: { sk: ['Sweden v Tunisia',              '3:00 AM'], ml: ['Spain v Cape Verde',             '5:00 PM'], pd: ['Belgium v Egypt',          '8:00 PM'] },
-  16: { sk: ['Iran v New Zealand',            '2:00 AM'], ml: ['France v Senegal',               '8:00 PM'] },
-  17: { sk: ['Argentina v Algeria',           '2:00 AM'], ml: ['Portugal v DR Congo',            '6:00 PM'], pd: ['England v Croatia',        '9:00 PM'] },
-  18: { sk: ['Ghana v Panama',               '12:00 AM'], ml: ['Czechia v South Africa',         '5:00 PM'] },
-  19: { sk: ['Mexico v South Korea',          '2:00 AM'], ml: ['USA v Australia',                '8:00 PM'] },
-  20: { sk: ['Brazil v Haiti',               '1:30 AM'],  ml: ['Netherlands v Sweden',           '6:00 PM'], pd: ['Germany v Ivory Coast',   '9:00 PM'] },
-  21: { sk: ['Ecuador v Curacao',             '1:00 AM'], ml: ['Spain v Saudi Arabia',           '5:00 PM'], pd: ['Belgium v Iran',           '8:00 PM'] },
-  22: { sk: ['New Zealand v Egypt',           '2:00 AM'], ml: ['Argentina v Austria',            '6:00 PM'], pd: ['France v Iraq',           '10:00 PM'] },
-  23: { sk: ['Norway v Senegal',              '1:00 AM'], ml: ['Portugal v Uzbekistan',          '6:00 PM'], pd: ['England v Ghana',          '9:00 PM'] },
-  24: { sk: ['Panama v Croatia',             '12:00 AM'], ml: ['Switzerland v Canada',           '8:00 PM'], pd: ['Scotland v Brazil',       '11:00 PM'] },
-  25: { sk: ['Czechia v Mexico',              '2:00 AM'], ml: ['Ecuador v Germany',              '9:00 PM'] },
-  26: { sk: ['Tunisia v Netherlands',        '12:00 AM'], ml: ['Norway v France',                '8:00 PM'] },
-  27: { sk: ['Uruguay v Spain',               '1:00 AM'], ml: ['Croatia v Ghana',               '10:00 PM'] },
-  28: { sk: ['Colombia v Portugal',          '12:30 AM'] },
+  11: { ml: ['Mexico v South Africa',        '10:00 PM'] },
+  12: { ml: ['Canada v Bosnia & Herz. *',     '9:00 PM'], sk: ['USA v Paraguay',               '2:00 AM'] },
+  13: { ml: ['Qatar v Switzerland',          '12:00 AM'], pd: ['Brazil v Morocco',             '12:00 AM'], sk: ['Haiti v Scotland',              '3:00 AM'] },
+  14: { ml: ['Germany v Curaçao',             '8:00 PM'], pd: ['Netherlands v Japan',          '11:00 PM'] },
+  15: { ml: ['Spain v Cape Verde',            '6:00 PM'], pd: ['Belgium v Egypt',             '12:00 AM'], sk: ['Iran v New Zealand',             '6:00 AM'] },
+  16: { ml: ['France v Senegal',              '9:00 PM'], sk: ['Argentina v Algeria',           '4:00 AM'] },
+  17: { ml: ['Portugal v TBD *',              '8:00 PM'], pd: ['England v Croatia',            '11:00 PM'], sk: ['Ghana v Panama',                 '1:00 AM'] },
+  18: { ml: ['Mexico v South Korea',          '4:00 AM'], sk: ['Canada v Qatar',                '3:00 AM'] },
+  19: { ml: ['USA v Australia',              '12:00 AM'], sk: ['Scotland v Morocco',           '12:00 AM'] },
+  20: { ml: ['Netherlands v TBD *',           '8:00 PM'], pd: ['Germany v Ivory Coast',        '10:00 PM'], sk: ['Brazil v Haiti',                 '3:00 AM'] },
+  21: { ml: ['Spain v Saudi Arabia',          '6:00 PM'], pd: ['Belgium v Iran',              '12:00 AM'] },
+  22: { ml: ['Argentina v Austria',           '8:00 PM'], pd: ['France v TBD *',              '11:00 PM'], sk: ['Norway v Senegal',               '2:00 AM'] },
+  23: { ml: ['Portugal v Uzbekistan',         '8:00 PM'], pd: ['England v Ghana',             '10:00 PM'], sk: ['Panama v Croatia',               '1:00 AM'] },
+  24: { ml: ['Switzerland v Canada',         '12:00 AM'], pd: ['Scotland v Brazil',           '12:00 AM'] },
+  25: { ml: ['Ecuador v Germany',            '10:00 PM'], sk: ['Tunisia v Netherlands',         '2:00 AM'] },
+  26: { ml: ['Norway v France',               '9:00 PM'], sk: ['Cape Verde v Saudi Arabia',     '3:00 AM'] },
+  27: { ml: ['Croatia v Ghana',              '11:00 PM'], sk: ['Colombia v Portugal',           '3:30 AM'] },
   // Round of 32
-  29: { sk: ['R32 — Match A', '2:00 AM'], ml: ['R32 — Match B', '8:00 PM'], pd: ['R32 — Match C', '9:30 PM'] },
-  30: { sk: ['R32 — Match D', '2:00 AM'], ml: ['R32 — Match E', '8:00 PM'], pd: ['R32 — Match F', '9:30 PM'] },
-  31: { sk: ['R32 — Match G', '2:00 AM'], ml: ['R32 — Match H', '8:00 PM'], pd: ['R32 — Match I', '9:30 PM'] },
-  32: { sk: ['R32 — Match J', '2:00 AM'], ml: ['R32 — Match K', '8:00 PM'], pd: ['R32 — Match L', '9:30 PM'] },
+  28: { sk: ['R32 — Match 1',               '12:00 AM'] },
+  29: { ml: ['R32 — Match 2',                '8:00 PM'], pd: ['R32 — Match 3',               '11:30 PM'], sk: ['R32 — Match 4',                '4:00 AM'] },
+  30: { ml: ['R32 — Match 5',                '8:00 PM'], pd: ['R32 — Match 6',               '11:00 PM'], sk: ['R32 — Match 7',                '4:00 AM'] },
+  31: { ml: ['R32 — Match 8',                '6:00 PM'], sk: ['R32 — Match 9',                '1:00 AM'], pd: ['R32 — Match 10',               '5:00 AM'] },
+  32: { sk: ['R32 — Match 11',             '12:00 AM'], pd: ['R32 — Match 12',                '1:00 AM'], ml: ['R32 — Match 13',               '8:00 AM'] },
+  33: { ml: ['R32 — Match 14',             '10:00 PM'], sk: ['R32 — Match 15',              '12:00 AM'], pd: ['R32 — Match 16',               '4:30 AM'] },
   // Round of 16
-  34: { ml: ['R16 — Match M', '8:00 PM'], pd: ['R16 — Match N', '10:00 PM'] },
-  35: { ml: ['R16 — Match O', '8:00 PM'], pd: ['R16 — Match P', '10:00 PM'] },
-  36: { ml: ['R16 — Match Q', '8:00 PM'], pd: ['R16 — Match R', '10:00 PM'] },
-  37: { ml: ['R16 — Match S', '8:00 PM'], pd: ['R16 — Match T', '10:00 PM'] },
+  34: { ml: ['R16 — Match 1',               '8:00 PM'], pd: ['R16 — Match 2',               '11:00 PM'] },
+  35: { ml: ['R16 — Match 3',              '10:00 PM'], pd: ['R16 — Match 4',                '3:00 AM'] },
+  36: { ml: ['R16 — Match 5',              '10:00 PM'], pd: ['R16 — Match 6',                '5:00 AM'] },
+  37: { ml: ['R16 — Match 7',               '6:00 PM'], pd: ['R16 — Match 8',                '1:00 AM'] },
   // Quarter-Finals
-  39: { ml: ['QF — Match U',  '8:00 PM'], pd: ['QF — Match V',  '10:00 PM'] },
-  40: { ml: ['QF — Match W',  '8:00 PM'], pd: ['QF — Match X',  '10:00 PM'] },
+  39: { ml: ['QF — Match 1',               '10:00 PM'] },
+  40: { sk: ['QF — Match 2',              '12:00 AM'] },
+  41: { ml: ['QF — Match 3',              '11:00 PM'], pd: ['QF — Match 4',                  '4:00 AM'] },
   // Semi-Finals
-  43: { pd: ['Semi-Final 1',  '1:00 AM'] },
-  44: { pd: ['Semi-Final 2',  '1:00 AM'] },
-  // Bronze Final & Final
-  48: { pd: ['Bronze Final',  '9:00 PM'] },
-  49: { pd: ['The Final',     '8:00 PM'] },
+  44: { pd: ['Semi-Final 1',              '10:00 PM'] },
+  45: { pd: ['Semi-Final 2',               '9:00 PM'] },
+  // Third Place & Final
+  48: { pd: ['Third Place Play-off',      '11:00 PM'] },
+  49: { pd: ['The Final',                  '9:00 PM'] },
 };
 
-// Full WC 2026 group stage pool — all matches by IST calendar day
+// Full WC 2026 match pool — all matches by IST (Irish Standard Time, UTC+1) calendar day
 export const WC_ALL_MATCHES: Record<number, [string, string][]> = {
-  11: [['USA v Paraguay', '10:30 AM'], ['Germany v Curacao', '10:30 PM'], ['Korea Republic v Czechia', '11:30 AM'], ['Mexico v South Africa', '2:30 PM'], ['Australia v Turkiye', '9:30 AM']],
-  12: [['Sweden v Tunisia', '7:30 AM'], ['Spain v Cabo Verde', '9:30 PM']],
-  13: [['Belgium v Egypt', '12:30 AM'], ['Saudi Arabia v Uruguay', '3:30 AM'], ['Iran v New Zealand', '6:30 AM'], ['Austria v Jordan', '9:30 AM']],
-  14: [['Portugal v DR Congo', '10:30 PM'], ['France v Senegal', '12:30 AM'], ['Iraq v Norway', '3:30 AM'], ['Argentina v Algeria', '6:30 AM']],
-  15: [['Ghana v Panama', '4:30 AM'], ['Uzbekistan v Colombia', '7:30 AM'], ['Czechia v South Africa', '9:30 PM']],
-  16: [['Switzerland v Bosnia & Herzegovina', '12:30 AM'], ['Canada v Qatar', '3:30 AM'], ['Mexico v Korea Republic', '6:30 AM']],
-  17: [['Netherlands v Sweden', '10:30 PM'], ['USA v Australia', '12:30 AM'], ['Scotland v Morocco', '3:30 AM'], ['Brazil v Haiti', '6:00 AM'], ['Turkiye v Paraguay', '8:30 AM'], ['Tunisia v Japan', '9:30 AM']],
-  18: [['Germany v Ivory Coast', '1:30 AM'], ['Ecuador v Curacao', '5:30 AM'], ['Spain v Saudi Arabia', '9:30 PM']],
-  19: [['Argentina v Austria', '10:30 PM'], ['Belgium v Iran', '12:30 AM'], ['Uruguay v Cabo Verde', '3:30 AM'], ['New Zealand v Egypt', '6:30 AM']],
-  20: [['Portugal v Uzbekistan', '10:30 PM'], ['Norway v Senegal', '5:30 AM'], ['Jordan v Algeria', '8:30 AM']],
-  21: [['England v Ghana', '1:30 AM'], ['Panama v Croatia', '4:30 AM'], ['Colombia v DR Congo', '7:30 AM']],
-  22: [['Switzerland v Canada', '12:30 AM'], ['Bosnia & Herzegovina v Qatar', '12:30 AM'], ['Scotland v Brazil', '3:30 AM'], ['Morocco v Haiti', '3:30 AM'], ['Czechia v Mexico', '6:30 AM'], ['South Africa v Korea Republic', '6:30 AM']],
-  23: [['Curacao v Ivory Coast', '1:30 AM'], ['Ecuador v Germany', '1:30 AM'], ['Japan v Sweden', '4:30 AM'], ['Tunisia v Netherlands', '4:30 AM'], ['Turkiye v USA', '7:30 AM']],
-  24: [['Norway v France', '12:30 AM'], ['Senegal v Iraq', '12:30 AM'], ['Cabo Verde v Saudi Arabia', '5:30 AM'], ['Uruguay v Spain', '5:30 AM'], ['Egypt v Iran', '8:30 AM'], ['New Zealand v Belgium', '8:30 AM']],
-  25: [['Panama v England', '2:30 AM'], ['Croatia v Ghana', '2:30 AM'], ['Colombia v Portugal', '5:00 AM'], ['DR Congo v Uzbekistan', '5:00 AM'], ['Algeria v Austria', '7:30 AM'], ['Jordan v Argentina', '7:30 AM']],
-  // Knockouts
-  29: [['R32 — Match A', '2:00 AM'], ['R32 — Match B', '8:00 PM'], ['R32 — Match C', '9:30 PM']],
-  30: [['R32 — Match D', '2:00 AM'], ['R32 — Match E', '8:00 PM'], ['R32 — Match F', '9:30 PM']],
-  31: [['R32 — Match G', '2:00 AM'], ['R32 — Match H', '8:00 PM'], ['R32 — Match I', '9:30 PM']],
-  32: [['R32 — Match J', '2:00 AM'], ['R32 — Match K', '8:00 PM'], ['R32 — Match L', '9:30 PM']],
-  34: [['R16 — Match M', '8:00 PM'], ['R16 — Match N', '10:00 PM']],
-  35: [['R16 — Match O', '8:00 PM'], ['R16 — Match P', '10:00 PM']],
-  36: [['R16 — Match Q', '8:00 PM'], ['R16 — Match R', '10:00 PM']],
-  37: [['R16 — Match S', '8:00 PM'], ['R16 — Match T', '10:00 PM']],
-  39: [['QF — Match U', '8:00 PM'], ['QF — Match V', '10:00 PM']],
-  40: [['QF — Match W', '8:00 PM'], ['QF — Match X', '10:00 PM']],
-  43: [['Semi-Final 1', '1:00 AM']],
-  44: [['Semi-Final 2', '1:00 AM']],
-  48: [['Bronze Final', '9:00 PM']],
-  49: [['The Final', '8:00 PM']],
+
+  // ─── GROUP STAGE ───────────────────────────────────────────────────────────
+
+  11: [
+    ['Mexico v South Africa',          '10:00 PM'],
+    ['South Korea v Czechia *',         '5:00 AM'],
+  ],
+  12: [
+    ['Canada v Bosnia & Herz. *',       '9:00 PM'],
+    ['USA v Paraguay',                  '2:00 AM'],
+  ],
+  13: [
+    ['Qatar v Switzerland',            '12:00 AM'],
+    ['Brazil v Morocco',               '12:00 AM'],
+    ['Haiti v Scotland',                '3:00 AM'],
+    ['Australia v TBD *',               '9:00 AM'],
+  ],
+  14: [
+    ['Germany v Curaçao',               '8:00 PM'],
+    ['Netherlands v Japan',            '11:00 PM'],
+    ['Ivory Coast v Ecuador',           '1:00 AM'],
+    ['TBD * v Tunisia',                 '5:00 AM'],
+  ],
+  15: [
+    ['Spain v Cape Verde',              '6:00 PM'],
+    ['Belgium v Egypt',                '12:00 AM'],
+    ['Saudi Arabia v Uruguay',         '12:00 AM'],
+    ['Iran v New Zealand',              '6:00 AM'],
+  ],
+  16: [
+    ['France v Senegal',                '9:00 PM'],
+    ['TBD * v Norway',                 '12:00 AM'],
+    ['Argentina v Algeria',             '4:00 AM'],
+    ['Austria v Jordan',                '9:00 AM'],
+  ],
+  17: [
+    ['Portugal v TBD *',                '8:00 PM'],
+    ['England v Croatia',              '11:00 PM'],
+    ['Ghana v Panama',                  '1:00 AM'],
+    ['Uzbekistan v Colombia',           '5:00 AM'],
+  ],
+  18: [
+    ['TBD * v South Africa',            '6:00 PM'],
+    ['Switzerland v TBD *',            '12:00 AM'],
+    ['Canada v Qatar',                  '3:00 AM'],
+    ['Mexico v South Korea',            '4:00 AM'],
+  ],
+  19: [
+    ['Scotland v Morocco',             '12:00 AM'],
+    ['USA v Australia',                '12:00 AM'],
+    ['Brazil v Haiti',                  '3:00 AM'],
+    ['TBD * v Paraguay',                '9:00 AM'],
+  ],
+  20: [
+    ['Netherlands v TBD *',             '8:00 PM'],
+    ['Germany v Ivory Coast',          '10:00 PM'],
+    ['Ecuador v Curaçao',               '5:00 AM'],
+    ['Tunisia v Japan',                 '7:00 AM'],
+  ],
+  21: [
+    ['Spain v Saudi Arabia',            '6:00 PM'],
+    ['Belgium v Iran',                 '12:00 AM'],
+    ['Uruguay v Cape Verde',           '12:00 AM'],
+    ['New Zealand v Egypt',             '6:00 AM'],
+  ],
+  22: [
+    ['Argentina v Austria',             '8:00 PM'],
+    ['France v TBD *',                 '11:00 PM'],
+    ['Norway v Senegal',                '2:00 AM'],
+    ['Jordan v Algeria',                '8:00 AM'],
+  ],
+  23: [
+    ['Portugal v Uzbekistan',           '8:00 PM'],
+    ['England v Ghana',                '10:00 PM'],
+    ['Panama v Croatia',                '1:00 AM'],
+    ['Colombia v TBD *',                '5:00 AM'],
+  ],
+  24: [
+    ['Switzerland v Canada',           '12:00 AM'],
+    ['TBD * v Qatar',                  '12:00 AM'],
+    ['Scotland v Brazil',              '12:00 AM'],
+    ['Morocco v Haiti',                '12:00 AM'],
+    ['TBD * v Mexico',                  '4:00 AM'],
+    ['South Africa v South Korea',      '4:00 AM'],
+  ],
+  25: [
+    ['Ecuador v Germany',              '10:00 PM'],
+    ['Curaçao v Ivory Coast',          '10:00 PM'],
+    ['Japan v TBD *',                   '2:00 AM'],
+    ['Tunisia v Netherlands',           '2:00 AM'],
+    ['TBD * v USA',                     '7:00 AM'],
+    ['Paraguay v Australia',            '7:00 AM'],
+  ],
+  26: [
+    ['Norway v France',                 '9:00 PM'],
+    ['Senegal v TBD *',                 '9:00 PM'],
+    ['Cape Verde v Saudi Arabia',       '3:00 AM'],
+    ['Uruguay v Spain',                 '3:00 AM'],
+    ['Egypt v Iran',                    '8:00 AM'],
+    ['New Zealand v Belgium',           '8:00 AM'],
+  ],
+  27: [
+    ['Panama v England',               '11:00 PM'],
+    ['Croatia v Ghana',                '11:00 PM'],
+    ['Colombia v Portugal',             '3:30 AM'],
+    ['TBD * v Uzbekistan',              '3:30 AM'],
+    ['Algeria v Austria',               '5:00 AM'],
+    ['Jordan v Argentina',              '5:00 AM'],
+  ],
+
+  // ─── ROUND OF 32 ───────────────────────────────────────────────────────────
+
+  28: [
+    ['R32 — Match 1',                  '12:00 AM'],
+  ],
+  29: [
+    ['R32 — Match 2',                   '8:00 PM'],
+    ['R32 — Match 3',                  '11:30 PM'],
+    ['R32 — Match 4',                   '4:00 AM'],
+  ],
+  30: [
+    ['R32 — Match 5',                   '8:00 PM'],
+    ['R32 — Match 6',                  '11:00 PM'],
+    ['R32 — Match 7',                   '4:00 AM'],
+  ],
+  31: [
+    ['R32 — Match 8',                   '6:00 PM'],
+    ['R32 — Match 9',                   '1:00 AM'],
+    ['R32 — Match 10',                  '5:00 AM'],
+  ],
+  32: [
+    ['R32 — Match 11',                 '12:00 AM'],
+    ['R32 — Match 12',                  '1:00 AM'],
+    ['R32 — Match 13',                  '8:00 AM'],
+  ],
+  33: [
+    ['R32 — Match 14',                 '10:00 PM'],
+    ['R32 — Match 15',                 '12:00 AM'],
+    ['R32 — Match 16',                  '4:30 AM'],
+  ],
+
+  // ─── ROUND OF 16 ───────────────────────────────────────────────────────────
+
+  34: [
+    ['R16 — Match 1',                   '8:00 PM'],
+    ['R16 — Match 2',                  '11:00 PM'],
+  ],
+  35: [
+    ['R16 — Match 3',                  '10:00 PM'],
+    ['R16 — Match 4',                   '3:00 AM'],
+  ],
+  36: [
+    ['R16 — Match 5',                  '10:00 PM'],
+    ['R16 — Match 6',                   '5:00 AM'],
+  ],
+  37: [
+    ['R16 — Match 7',                   '6:00 PM'],
+    ['R16 — Match 8',                   '1:00 AM'],
+  ],
+
+  // ─── QUARTER-FINALS ────────────────────────────────────────────────────────
+
+  39: [
+    ['QF — Match 1',                   '10:00 PM'],
+  ],
+  40: [
+    ['QF — Match 2',                   '12:00 AM'],
+  ],
+  41: [
+    ['QF — Match 3',                   '11:00 PM'],
+    ['QF — Match 4',                    '4:00 AM'],
+  ],
+
+  // ─── SEMI-FINALS ───────────────────────────────────────────────────────────
+
+  44: [
+    ['Semi-Final 1',                   '10:00 PM'],
+  ],
+  45: [
+    ['Semi-Final 2',                    '9:00 PM'],
+  ],
+
+  // ─── THIRD PLACE & FINAL ───────────────────────────────────────────────────
+
+  48: [
+    ['Third Place Play-off',           '11:00 PM'],
+  ],
+  49: [
+    ['The Final',                       '9:00 PM'],
+  ],
 };
 
 // Streak prize config per market
